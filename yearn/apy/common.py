@@ -8,12 +8,13 @@ from yearn.utils import closest_block_after_timestamp
 from semantic_version.base import Version
 
 
-SECONDS_PER_YEAR = 31_556_952.0
+SECONDS_PER_YEAR = 31_556_952
 
 @dataclass
 class SharePricePoint:
     block: int
     price: int
+    tvl: int
 
 
 @dataclass
@@ -60,8 +61,9 @@ def calculate_roi(after: SharePricePoint, before: SharePricePoint) -> float:
     now_time = datetime.today()
     blocks_per_day = int((now - closest_block_after_timestamp((now_time - timedelta(days=7)).timestamp())) / 7)
     
-    # calculate our annualized return for a vault
-    pps_delta = (after.price - before.price) / (before.price or 1)
+    # calculate our annualized return for a vault, normalized by current and previous share price and TVL
+    tvl_corrected_after_price = (after.price * after.tvl) / (before.tvl) or after.price # if starting share price is 0, revert to using the normal after.price
+    pps_delta = (tvl_corrected_after_price - before.price) / (before.price or 1)
     block_delta = after.block - before.block
     days = block_delta / blocks_per_day
     annualized_roi = (1 + pps_delta) ** (365.2425 / days) - 1

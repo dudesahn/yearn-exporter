@@ -29,39 +29,47 @@ def closest(haystack, needle):
 
 def simple(vault, samples: ApySamples) -> Apy:
     harvests = sorted([harvest for strategy in vault.strategies for harvest in strategy.harvests])
-
+    
+    # set our parameters
     contract = vault.vault
     price_per_share = contract.pricePerShare
-    now_price = price_per_share(block_identifier=samples.now)
-    inception_price = 10 ** contract.decimals()
+    vault_tvl  = contract.totalAssets
     
+    # calculate our current price and TVL
+    now_tvl = vault_tvl(block_identifier=samples.now)
+    now_price = price_per_share(block_identifier=samples.now)
+
+    # get our inception data
+    inception_price = 10 ** contract.decimals()
+    inception_block = harvests[:2][-1]
+    inception_tvl = 0
+    
+    # we don't want to display APYs when vaults are ramping up
     if len(harvests) < 2:
         raise ApyError("v2:harvests", "harvests are < 2")
 
     if now_price == inception_price:
         raise ApyError("v2:inception", "no change from inception price")
 
-    inception_block = harvests[:2][-1]
-
-    now_price = price_per_share(block_identifier=samples.now)
-
-    week_ago = closest(harvests, samples.week_ago)
-    month_ago = closest(harvests, samples.month_ago)
-
+    # check our historical data
     if samples.week_ago > inception_block:
-        week_ago_price = price_per_share(block_identifier=week_ago)
+        week_ago_price = price_per_share(block_identifier=samples.week_ago)
+        week_ago_tvl = vault_tvl(block_identifier=samples.week_ago)
     else:
         week_ago_price = inception_price
+        week_ago_tvl = 0
 
     if samples.month_ago > inception_block:
-        month_ago_price = price_per_share(block_identifier=month_ago)
+        month_ago_price = price_per_share(block_identifier=samples.month_ago)
+        month_ago_tvl = vault_tvl(block_identifier=samples.month_ago)
     else:
         month_ago_price = inception_price
+        month_ago_tvl = 0
 
-    now_point = SharePricePoint(samples.now, now_price)
-    week_ago_point = SharePricePoint(samples.week_ago, week_ago_price)
-    month_ago_point = SharePricePoint(samples.month_ago, month_ago_price)
-    inception_point = SharePricePoint(inception_block, inception_price)
+    now_point = SharePricePoint(samples.now, now_price, now_tvl)
+    week_ago_point = SharePricePoint(samples.week_ago, week_ago_price, week_ago_tvl)
+    month_ago_point = SharePricePoint(samples.month_ago, month_ago_price, month_ago_tvl)
+    inception_point = SharePricePoint(inception_block, inception_price, inception_tvl)
 
     week_ago_apy = calculate_roi(now_point, week_ago_point)
     month_ago_apy = calculate_roi(now_point, month_ago_point)
@@ -107,36 +115,47 @@ def simple(vault, samples: ApySamples) -> Apy:
 
 def average(vault, samples: ApySamples) -> Apy:
     harvests = sorted([harvest for strategy in vault.strategies for harvest in strategy.harvests])
-
+    
+    # set our parameters
     contract = vault.vault
     price_per_share = contract.pricePerShare
-    now_price = price_per_share(block_identifier=samples.now)
-    inception_price = 10 ** contract.decimals()
+    vault_tvl  = contract.totalAssets
     
+    # calculate our current price and TVL
+    now_tvl = vault_tvl(block_identifier=samples.now)
+    now_price = price_per_share(block_identifier=samples.now)
+
+    # get our inception data
+    inception_price = 10 ** contract.decimals()
+    inception_block = harvests[:2][-1]
+    inception_tvl = 0
+    
+    # we don't want to display APYs when vaults are ramping up
     if len(harvests) < 2:
         raise ApyError("v2:harvests", "harvests are < 2")
 
     if now_price == inception_price:
         raise ApyError("v2:inception", "no change from inception price")
-
-    inception_block = harvests[:2][-1]
-
-    now_price = price_per_share(block_identifier=samples.now)
-
+    
+    # check our historical data
     if samples.week_ago > inception_block:
         week_ago_price = price_per_share(block_identifier=samples.week_ago)
+        week_ago_tvl = vault_tvl(block_identifier=samples.week_ago)
     else:
         week_ago_price = inception_price
+        week_ago_tvl = 0
 
     if samples.month_ago > inception_block:
         month_ago_price = price_per_share(block_identifier=samples.month_ago)
+        month_ago_tvl = vault_tvl(block_identifier=samples.month_ago)
     else:
         month_ago_price = inception_price
+        month_ago_tvl = 0
 
-    now_point = SharePricePoint(samples.now, now_price)
-    week_ago_point = SharePricePoint(samples.week_ago, week_ago_price)
-    month_ago_point = SharePricePoint(samples.month_ago, month_ago_price)
-    inception_point = SharePricePoint(inception_block, inception_price)
+    now_point = SharePricePoint(samples.now, now_price, now_tvl)
+    week_ago_point = SharePricePoint(samples.week_ago, week_ago_price, week_ago_tvl)
+    month_ago_point = SharePricePoint(samples.month_ago, month_ago_price, month_ago_tvl)
+    inception_point = SharePricePoint(inception_block, inception_price, inception_tvl)
 
     week_ago_apy = calculate_roi(now_point, week_ago_point)
     month_ago_apy = calculate_roi(now_point, month_ago_point)

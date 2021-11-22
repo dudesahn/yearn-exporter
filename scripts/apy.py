@@ -148,5 +148,29 @@ def dai():
     address = "0xdA816459F1AB5631232FE5e97a05BBBb94970c95"
     vault = VaultV2.from_address(address)
     print(json.dumps(dataclasses.asdict(vault.apy(samples)), indent=2))
+
+def usdc():
+    samples = get_samples()
+    address = "0xa354F35829Ae975e850e23e9615b11Da1B3dC4DE"
+    vault = VaultV2.from_address(address)
+    print(json.dumps(dataclasses.asdict(vault.apy(samples)), indent=2))
+
+def snx():
+    samples = get_samples()
+    address = "0xF29AE508698bDeF169B89834F76704C3B205aedf"
+    vault = VaultV2.from_address(address)
+    print(json.dumps(dataclasses.asdict(vault.apy(samples)), indent=2))
+
+def usdc_old():
+    samples = get_samples()
+    address = "0x5f18C75AbDAe578b483E5F43f12a39cF75b973a9"
+    vault = VaultV2.from_address(address)
+    print(json.dumps(dataclasses.asdict(vault.apy(samples)), indent=2))
+
+def steth():
+    samples = get_samples()
+    address = "0xdCD90C7f6324cfa40d7169ef80b12031770B4325"
+    vault = VaultV2.from_address(address)
+    print(json.dumps(dataclasses.asdict(vault.apy(samples)), indent=2))
     
 
