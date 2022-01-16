@@ -39,7 +39,7 @@ def _get_price(token, block=None):
     ]
     if token in SKIP_PRICE:
         return 0
-    
+
     try:
         price = get_price(token, block)
     except AttributeError:
@@ -123,7 +123,6 @@ class Treasury:
 
         return list(tokens)
 
-
     def held_assets(self, block=None) -> dict:
         balances = {}
         for address in self.addresses:
@@ -134,8 +133,7 @@ class Treasury:
                 block=block,
             )
             decimals = fetch_multicall(
-                *[[contract(token), "decimals"] for token in tokens],
-                block=block
+                *[[contract(token), "decimals"] for token in tokens], block=block
             )
             token_balances = [
                 balance / 10 ** decimal if decimal else 0
@@ -275,8 +273,12 @@ class Treasury:
             'pulling treasury transfer events, please wait patiently this takes a while...'
         )
         # Treasury didn't exist prior to block 10502337
-        self.log_filter_in = web3.eth.filter({"fromBlock": 10502337, "topics": self._topics_in})
-        self.log_filter_out = web3.eth.filter({"fromBlock": 10502337, "topics": self._topics_out})
+        self.log_filter_in = web3.eth.filter(
+            {"fromBlock": 10502337, "topics": self._topics_in}
+        )
+        self.log_filter_out = web3.eth.filter(
+            {"fromBlock": 10502337, "topics": self._topics_out}
+        )
         for block in chain.new_blocks(height_buffer=12):
             logs = self.log_filter_in.get_new_entries()
             self.process_transfers(logs)
@@ -300,14 +302,14 @@ class Treasury:
                 self._transfers.append(event)
             except:
                 if log.address in [
-                    # These are NFTs # TODO 
-                    '0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85', # ENS domains
-                    '0x01234567bac6fF94d7E4f0EE23119CF848F93245', # EthBlocks
-                    '0xD7aBCFd05a9ba3ACbc164624402fB2E95eC41be6', # EthJuanchos
-                    '0xeF81c2C98cb9718003A89908e6bd1a5fA8A098A3', # SpaceShiba
-                    '0xD1E5b0FF1287aA9f9A268759062E4Ab08b9Dacbe', # .crypto Domain
-                    '0x437a6B880d4b3Be9ed93BD66D6B7f872fc0f5b5E', # Soda
-                    ]:
+                    # These are NFTs # TODO
+                    '0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85',  # ENS domains
+                    '0x01234567bac6fF94d7E4f0EE23119CF848F93245',  # EthBlocks
+                    '0xD7aBCFd05a9ba3ACbc164624402fB2E95eC41be6',  # EthJuanchos
+                    '0xeF81c2C98cb9718003A89908e6bd1a5fA8A098A3',  # SpaceShiba
+                    '0xD1E5b0FF1287aA9f9A268759062E4Ab08b9Dacbe',  # .crypto Domain
+                    '0x437a6B880d4b3Be9ed93BD66D6B7f872fc0f5b5E',  # Soda
+                ]:
                     pass
                 else:
                     print('unable to decode logs, figure out why')

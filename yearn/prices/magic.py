@@ -20,7 +20,6 @@ from yearn.prices import balancer, constants, curve
 logger = logging.getLogger(__name__)
 
 
-
 @ttl_cache(10000)
 def get_price(token, block=None):
     token = str(token)
@@ -46,7 +45,7 @@ def get_price_arbi(token, block=None):
     if token in compound:
         price = compound.get_price(token, block=block)
         logger.debug("compound -> %s", price)
-    
+
     if isinstance(price, list):
         price, underlying = price
         logger.debug("peel %s %s", price, underlying)

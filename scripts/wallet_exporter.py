@@ -13,6 +13,7 @@ logger = logging.getLogger('yearn.wallet_exporter')
 postgres_cached_thru_block = postgres.last_recorded_block('user_txs')
 postgres_cached_thru_ts = chain[postgres_cached_thru_block].timestamp
 
+
 def main():
     start = datetime.now(tz=timezone.utc)
     # end: 2020-02-12 first iearn deployment
@@ -23,7 +24,7 @@ def main():
         export_chunk,
         export_snapshot,
         'aggregate{param="total wallets"}',
-        _generate_snapshot_range
+        _generate_snapshot_range,
     )
 
 
@@ -32,12 +33,7 @@ def export_chunk(chunk, export_snapshot_func):
     for snapshot in chunk:
         ts = snapshot.timestamp()
         export_snapshot_func(
-            {
-                'yearn': yearn,
-                'snapshot': snapshot,
-                'ts': ts,
-                'exporter_name': 'wallets'
-            }
+            {'yearn': yearn, 'snapshot': snapshot, 'ts': ts, 'exporter_name': 'wallets'}
         )
 
 

@@ -1,4 +1,3 @@
-
 treasury_table_query = f'CREATE TABLE TREASURY_TXS(\
                             CHAINID SMALLINT NOT NULL,\
                             TIMESTAMP INT NOT NULL,\

@@ -13,6 +13,7 @@ addresses = {
     Network.Fantom: '0x56E2898E0ceFF0D1222827759B56B28Ad812f92F'
 }
 
+
 class Band(metaclass=Singleton):
     def __init__(self):
         if chain.id not in addresses:
@@ -23,7 +24,12 @@ class Band(metaclass=Singleton):
     def get_price(self, asset, block=None):
         asset_symbol = contract(asset).symbol()
         try:
-            return self.oracle.getReferenceData(asset_symbol, 'USDC', block_identifier=block)[0] / 1e18
+            return (
+                self.oracle.getReferenceData(
+                    asset_symbol, 'USDC', block_identifier=block
+                )[0]
+                / 1e18
+            )
         except ValueError:
             return None
 

@@ -122,7 +122,9 @@ class Registry(metaclass=Singleton):
 
     def vault_from_event(self, event):
         return Vault(
-            vault=Contract.from_abi("Vault", event["vault"], self.releases[event["api_version"]].abi),
+            vault=Contract.from_abi(
+                "Vault", event["vault"], self.releases[event["api_version"]].abi
+            ),
             token=event["token"],
             api_version=event["api_version"],
             registry=self,
@@ -140,21 +142,36 @@ class Registry(metaclass=Singleton):
 
     def describe(self, block=None):
         vaults = self.active_vaults_at(block)
-        results = Parallel(8, "threading")(delayed(vault.describe)(block=block) for vault in vaults)
+        results = Parallel(8, "threading")(
+            delayed(vault.describe)(block=block) for vault in vaults
+        )
         return {vault.name: result for vault, result in zip(vaults, results)}
 
     def total_value_at(self, block=None):
         vaults = self.active_vaults_at(block)
-        prices = Parallel(8, "threading")(delayed(magic.get_price)(str(vault.token), block=block) for vault in vaults)
-        results = fetch_multicall(*[[vault.vault, "totalAssets"] for vault in vaults], block=block)
-        return {vault.name: assets * price / vault.scale for vault, assets, price in zip(vaults, results, prices)}
+        prices = Parallel(8, "threading")(
+            delayed(magic.get_price)(str(vault.token), block=block) for vault in vaults
+        )
+        results = fetch_multicall(
+            *[[vault.vault, "totalAssets"] for vault in vaults], block=block
+        )
+        return {
+            vault.name: assets * price / vault.scale
+            for vault, assets, price in zip(vaults, results, prices)
+        }
 
     def active_vaults_at(self, block=None):
         vaults = self.vaults + self.experiments
         if block:
-            vaults = [vault for vault in vaults if contract_creation_block(str(vault.vault)) <= block]
+            vaults = [
+                vault
+                for vault in vaults
+                if contract_creation_block(str(vault.vault)) <= block
+            ]
         # fixes edge case: a vault is not necessarily initialized on creation
-        activations = fetch_multicall(*[[vault.vault, 'activation'] for vault in vaults], block=block)
+        activations = fetch_multicall(
+            *[[vault.vault, 'activation'] for vault in vaults], block=block
+        )
         return [vault for vault, activation in zip(vaults, activations) if activation]
 
     def wallets(self, block=None):

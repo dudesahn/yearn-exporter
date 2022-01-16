@@ -13,22 +13,32 @@ mapping = {
     "earn": {
         "metric": "iearn",
         "labels": ["vault", "param", "address", "version"],
-        "agg_stats": ["total wallets"]
+        "agg_stats": ["total wallets"],
     },
     "ib": {
         "metric": "ironbank",
         "labels": ["vault", "param", "address", "version"],
-        "agg_stats": ["total wallets"]
+        "agg_stats": ["total wallets"],
     },
     "v1": {
         "metric": "yearn",
         "labels": ["vault", "param", "address", "version"],
-        "agg_stats": ["total wallets","active wallets","wallets > $5k","wallets > $50k"]
+        "agg_stats": [
+            "total wallets",
+            "active wallets",
+            "wallets > $5k",
+            "wallets > $50k",
+        ],
     },
     "v2": {
         "metric": "yearn_vault",
         "labels": ["vault", "param", "address", "version", "experimental"],
-        "agg_stats": ["total wallets","active wallets","wallets > $5k","wallets > $50k"]
+        "agg_stats": [
+            "total wallets",
+            "active wallets",
+            "wallets > $5k",
+            "wallets > $50k",
+        ],
     },
     "v2_strategy": {
         "metric": "yearn_strategy",
@@ -37,8 +47,8 @@ mapping = {
     "special": {
         "metric": "yearn_vault",
         "labels": ["vault", "param", "address", "version", "experimental"],
-        "agg_stats": ["total wallets"]
-    }
+        "agg_stats": ["total wallets"],
+    },
 }
 
 
@@ -66,11 +76,13 @@ def export(timestamp, data):
                 item = _build_item(metric, label_names, label_values, value, timestamp)
                 metrics_to_export.append(item)
 
-
     for vault, params in data["v2"].items():
         metric = mapping["v2"]["metric"]
         for key, value in params.items():
-            if key in ["address", "version", "experimental", "strategies"] or value is None:
+            if (
+                key in ["address", "version", "experimental", "strategies"]
+                or value is None
+            ):
                 continue
 
             label_values = _get_label_values(params, [vault, key], True)
@@ -90,7 +102,9 @@ def export(timestamp, data):
                 label_values = _get_label_values(params, [vault, strategy, key], True)
                 label_names = mapping["v2_strategy"]["labels"]
 
-                item = _build_item(metric, label_names, label_values, value or 0, timestamp)
+                item = _build_item(
+                    metric, label_names, label_values, value or 0, timestamp
+                )
                 metrics_to_export.append(item)
 
     # post all metrics for this timestamp at once
@@ -102,16 +116,18 @@ def export_wallets(timestamp, data):
     for key, value in data['agg_stats'].items():
         if key == 'wallet balances usd':
             for wallet, usd_bal in value.items():
-                label_names = ["param","wallet"]
-                label_values = ["balance usd",wallet]
-                item = _build_item("aggregate", label_names, label_values, usd_bal, timestamp)
+                label_names = ["param", "wallet"]
+                label_values = ["balance usd", wallet]
+                item = _build_item(
+                    "aggregate", label_names, label_values, usd_bal, timestamp
+                )
                 metrics_to_export.append(item)
             continue
         label_names = ['param']
         label_values = [key]
         item = _build_item("aggregate", label_names, label_values, value, timestamp)
         metrics_to_export.append(item)
-    for product in ['v1','v2']:
+    for product in ['v1', 'v2']:
         metric = mapping[product]["metric"]
         for key, value in data[product].items():
             if key in mapping[product]["agg_stats"]:
@@ -122,20 +138,26 @@ def export_wallets(timestamp, data):
                 continue
             elif key == "wallet balances usd":
                 for wallet, usd_bal in value.items():
-                    label_names = ["param","wallet"]
-                    label_values = ["balance usd",wallet]
-                    item = _build_item(metric, label_names, label_values, usd_bal, timestamp)
+                    label_names = ["param", "wallet"]
+                    label_values = ["balance usd", wallet]
+                    item = _build_item(
+                        metric, label_names, label_values, usd_bal, timestamp
+                    )
                     metrics_to_export.append(item)
                 continue
-            
+
             vault, params = key, value
             for k, v in params.items():
                 if k == 'wallet balances':
                     for wallet, bals in v.items():
                         for denom, bal in bals.items():
-                            label_values = [wallet] + _get_label_values(params, [vault, denom], product in ['v2','special'])
+                            label_values = [wallet] + _get_label_values(
+                                params, [vault, denom], product in ['v2', 'special']
+                            )
                             label_names = ["wallet"] + mapping[product]["labels"]
-                            item = _build_item(metric, label_names, label_values, bal, timestamp)
+                            item = _build_item(
+                                metric, label_names, label_values, bal, timestamp
+                            )
                             metrics_to_export.append(item)
                     continue
 
@@ -148,6 +170,7 @@ def export_wallets(timestamp, data):
     # post all wallet metrics for this timestamp at once
     _post(metrics_to_export)
 
+
 def export_treasury(timestamp, data):
     metrics_to_export = []
     for section, section_data in data.items():
@@ -156,22 +179,40 @@ def export_treasury(timestamp, data):
                 symbol = 'ETH' if token == 'ETH' else contract(token).symbol()
                 for key, value in bals.items():
                     if value != 0:
-                        label_names = ['param','wallet','token_address','token','bucket']
-                        label_values = [key,wallet,token,symbol,get_token_bucket(token)]
-                        item = _build_item(f"treasury_{section}",label_names,label_values,value,timestamp)
+                        label_names = [
+                            'param',
+                            'wallet',
+                            'token_address',
+                            'token',
+                            'bucket',
+                        ]
+                        label_values = [
+                            key,
+                            wallet,
+                            token,
+                            symbol,
+                            get_token_bucket(token),
+                        ]
+                        item = _build_item(
+                            f"treasury_{section}",
+                            label_names,
+                            label_values,
+                            value,
+                            timestamp,
+                        )
                         metrics_to_export.append(item)
-    
+
     # post all metrics for this timestamp at once
     _post(metrics_to_export)
 
 
 def export_duration(duration_seconds, pool_size, direction, timestamp_seconds):
     item = _build_item(
-      "export_duration",
-      [ "pool_size", "direction" ],
-      [ pool_size, direction ],
-      duration_seconds,
-      timestamp_seconds
+        "export_duration",
+        ["pool_size", "direction"],
+        [pool_size, direction],
+        duration_seconds,
+        timestamp_seconds,
     )
     _post([item])
 
@@ -198,16 +239,9 @@ def _post(metrics_to_export: List[Dict]):
     data = _to_jsonl_gz(metrics_to_export)
     base_url = os.environ.get('VM_URL', 'http://victoria-metrics:8428')
     url = f'{base_url}/api/v1/import'
-    headers = {
-        'Connection': 'close',
-        'Content-Encoding': 'gzip'
-    }
+    headers = {'Connection': 'close', 'Content-Encoding': 'gzip'}
     with requests.Session() as session:
-        session.post(
-            url = url,
-            data = data,
-            headers = headers
-        )
+        session.post(url=url, data=data, headers=headers)
 
 
 def _sanitize(value):
@@ -215,7 +249,7 @@ def _sanitize(value):
         return int(value)
     elif isinstance(value, str):
         return value.replace('"', '')  # e.g. '"yvrenBTC" 0.3.5 0x340832'
-    
+
     return value
 
 
@@ -231,7 +265,7 @@ def flatten_dict(d):
     return dict(items())
 
 
-def _get_label_values(params, inital_labels, experimental = False):
+def _get_label_values(params, inital_labels, experimental=False):
     address = _get_string_label(params, "address")
     version = _get_string_label(params, "version")
     label_values = inital_labels + [address, version]

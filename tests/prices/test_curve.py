@@ -164,7 +164,7 @@ metapools = new_metapools + old_metapools
 
 eur_usd_crypto_pool_tokens = [
     "0x3b6831c0077a1e44ED0a21841C3bC4dC11bCE833",
-    "0x3D229E1B4faab62F621eF2F6A610961f7BD7b23B"
+    "0x3D229E1B4faab62F621eF2F6A610961f7BD7b23B",
 ]
 
 
@@ -268,9 +268,16 @@ def test_curve_lp_price_oracle_historical(name):
         except (PriceError, TypeError):
             prices.append(None)
 
-    virtual_prices = [contract(swap).get_virtual_price(block_identifier=block) / 1e18 for block in blocks]
+    virtual_prices = [
+        contract(swap).get_virtual_price(block_identifier=block) / 1e18
+        for block in blocks
+    ]
 
-    print(tabulate(list(zip(blocks, prices, virtual_prices)), headers=['block', 'price', 'vp']))
+    print(
+        tabulate(
+            list(zip(blocks, prices, virtual_prices)), headers=['block', 'price', 'vp']
+        )
+    )
 
 
 @pytest.mark.parametrize('name', pooldata)

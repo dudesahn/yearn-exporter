@@ -23,17 +23,21 @@ class Yearn:
     Can describe all products.
     """
 
-    def __init__(self, load_strategies=True, load_harvests=False, watch_events_forever=True) -> None:
+    def __init__(
+        self, load_strategies=True, load_harvests=False, watch_events_forever=True
+    ) -> None:
         start = time()
         if chain.id == Network.Mainnet:
             self.registries = {
                 "earn": yearn.iearn.Registry(),
                 "v1": yearn.v1.registry.Registry(),
-                "v2": yearn.v2.registry.Registry(watch_events_forever=watch_events_forever),
+                "v2": yearn.v2.registry.Registry(
+                    watch_events_forever=watch_events_forever
+                ),
                 "ib": yearn.ironbank.Registry(),
                 "special": yearn.special.Registry(),
             }
-        elif chain.id ==  Network.Fantom:
+        elif chain.id == Network.Fantom:
             self.registries = {
                 "v2": yearn.v2.registry.Registry(),
                 "ib": yearn.ironbank.Registry(),
@@ -60,10 +64,13 @@ class Yearn:
         return dict(zip(self.registries, desc))
 
     def describe_wallets(self, block=None):
-        registries = ['v1','v2'] # TODO: add other registries [earn, ib, special]
+        registries = ['v1', 'v2']  # TODO: add other registries [earn, ib, special]
         describer = RegistryWalletDescriber()
-        data = Parallel(4,'threading')(delayed(describer.describe_wallets)(self.registries[key], block=block) for key in registries)
-        data = {registry:desc for registry,desc in zip(registries,data)}
+        data = Parallel(4, 'threading')(
+            delayed(describer.describe_wallets)(self.registries[key], block=block)
+            for key in registries
+        )
+        data = {registry: desc for registry, desc in zip(registries, data)}
 
         wallet_balances = Counter()
         for registry, reg_desc in data.items():
@@ -72,15 +79,23 @@ class Yearn:
         agg_stats = {
             "agg_stats": {
                 "total wallets": len(wallet_balances),
-                "active wallets": sum(1 if balance > 50 else 0 for wallet, balance in wallet_balances.items()),
-                "wallets > $5k": sum(1 if balance > 5000 else 0 for wallet, balance in wallet_balances.items()),
-                "wallets > $50k": sum(1 if balance > 50000 else 0 for wallet, balance in wallet_balances.items()),
-                "wallet balances usd": wallet_balances
+                "active wallets": sum(
+                    1 if balance > 50 else 0
+                    for wallet, balance in wallet_balances.items()
+                ),
+                "wallets > $5k": sum(
+                    1 if balance > 5000 else 0
+                    for wallet, balance in wallet_balances.items()
+                ),
+                "wallets > $50k": sum(
+                    1 if balance > 50000 else 0
+                    for wallet, balance in wallet_balances.items()
+                ),
+                "wallet balances usd": wallet_balances,
             }
         }
         data.update(agg_stats)
         return data
-
 
     def total_value_at(self, block=None):
         desc = Parallel(4, "threading")(
@@ -88,18 +103,21 @@ class Yearn:
             for key in self.registries
         )
         return dict(zip(self.registries, desc))
-        
 
     def export(self, block, ts):
         start = time()
         data = self.describe(block)
         victoria.export(ts, data)
-        tvl = sum(vault['tvl'] for product in data.values() for vault in product.values() if type(vault) == dict)
+        tvl = sum(
+            vault['tvl']
+            for product in data.values()
+            for vault in product.values()
+            if type(vault) == dict
+        )
         logger.info('exported block=%d tvl=%.0f took=%.3fs', block, tvl, time() - start)
 
-    
     def export_wallets(self, block, ts):
         start = time()
         data = self.describe_wallets(block)
-        victoria.export_wallets(ts,data)
+        victoria.export_wallets(ts, data)
         logger.info('exported block=%d took=%.3fs', block, time() - start)

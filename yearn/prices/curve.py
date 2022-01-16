@@ -102,7 +102,7 @@ class CurveRegistry(metaclass=Singleton):
         log_filter = create_filter(str(self.crypto_swap_registry))
         for event in decode_logs(log_filter.get_new_entries()):
             if event.name == 'PoolAdded':
-                self.pools.add(event['pool'])    
+                self.pools.add(event['pool'])
 
         logger.info(f'loaded {len(self.pools)} pools')
 
@@ -134,11 +134,11 @@ class CurveRegistry(metaclass=Singleton):
             str(factory): list(islice(pool_lists, pool_count))
             for factory, pool_count in zip(metapool_factories, pool_counts)
         }
-    
+
     def crypto_swap_registry_supports_pool(self, pool):
         if self.crypto_swap_registry.get_pool_name(pool):
             return True
-        else: 
+        else:
             return False
 
     def get_factory(self, pool):
@@ -156,7 +156,9 @@ class CurveRegistry(metaclass=Singleton):
 
     @lru_cache(maxsize=None)
     def _pool_from_lp_token(self, token):
-        crypto_swap_registry_result = self.crypto_swap_registry.get_pool_from_lp_token(token)
+        crypto_swap_registry_result = self.crypto_swap_registry.get_pool_from_lp_token(
+            token
+        )
 
         if crypto_swap_registry_result != ZERO_ADDRESS:
             return crypto_swap_registry_result
@@ -193,7 +195,7 @@ class CurveRegistry(metaclass=Singleton):
         if self.crypto_swap_registry_supports_pool(pool):
             gauges, types = self.crypto_swap_registry.get_gauges(pool)
             if gauges[0] != ZERO_ADDRESS:
-                return gauges[0]        
+                return gauges[0]
 
         gauges, types = self.registry.get_gauges(pool)
         if gauges[0] != ZERO_ADDRESS:
@@ -215,16 +217,14 @@ class CurveRegistry(metaclass=Singleton):
 
         # pool not in registry
         if set(coins) == {ZERO_ADDRESS}:
-            coins = fetch_multicall(
-                *[[contract(pool), 'coins', i] for i in range(8)]
-            )
+            coins = fetch_multicall(*[[contract(pool), 'coins', i] for i in range(8)])
 
         return [coin for coin in coins if coin not in {None, ZERO_ADDRESS}]
 
     @lru_cache(maxsize=None)
     def get_underlying_coins(self, pool):
         factory = self.get_factory(pool)
-        
+
         if factory:
             factory = contract(factory)
             # new factory reverts for non-meta pools
@@ -234,7 +234,7 @@ class CurveRegistry(metaclass=Singleton):
                 coins = factory.get_coins(pool)
         else:
             coins = self.registry.get_underlying_coins(pool)
-        
+
         # pool not in registry, not checking for underlying_coins here
         if set(coins) == {ZERO_ADDRESS}:
             return self.get_coins(pool)
@@ -244,11 +244,11 @@ class CurveRegistry(metaclass=Singleton):
     @lru_cache(maxsize=None)
     def get_decimals(self, pool):
         factory = self.get_factory(pool)
-        if factory: 
+        if factory:
             source = contract(factory)
         elif self.crypto_swap_registry_supports_pool(pool):
             source = self.crypto_swap_registry
-        else: 
+        else:
             source = source = self.registry
 
         decimals = source.get_decimals(pool)
@@ -259,7 +259,7 @@ class CurveRegistry(metaclass=Singleton):
             decimals = fetch_multicall(
                 *[[contract(token), 'decimals'] for token in coins]
             )
-        
+
         return [dec for dec in decimals if dec != 0]
 
     def get_balances(self, pool, block=None):
@@ -271,7 +271,7 @@ class CurveRegistry(metaclass=Singleton):
         decimals = self.get_decimals(pool)
 
         try:
-            if factory: 
+            if factory:
                 source = contract(factory)
             elif self.crypto_swap_registry_supports_pool(pool):
                 source = self.crypto_swap_registry
@@ -339,7 +339,14 @@ class CurveRegistry(metaclass=Singleton):
             block=block,
         )
         results = [x / 1e18 for x in results]
-        gauge_balance, gauge_total, working_balance, working_supply, vecrv_balance, vecrv_total = results
+        (
+            gauge_balance,
+            gauge_total,
+            working_balance,
+            working_supply,
+            vecrv_balance,
+            vecrv_total,
+        ) = results
         try:
             boost = working_balance / gauge_balance * 2.5
         except ZeroDivisionError:
@@ -353,7 +360,9 @@ class CurveRegistry(metaclass=Singleton):
         noboost_lim = gauge_balance * 0.4
         noboost_supply = working_supply + noboost_lim - working_balance
         try:
-            max_boost_possible = (lim / _working_supply) / (noboost_lim / noboost_supply)
+            max_boost_possible = (lim / _working_supply) / (
+                noboost_lim / noboost_supply
+            )
         except ZeroDivisionError:
             max_boost_possible = 1
 
@@ -383,7 +392,9 @@ class CurveRegistry(metaclass=Singleton):
         working_supply, relative_weight, inflation_rate, virtual_price = results
         token_price = magic.get_price(lp_token, block=block)
         try:
-            rate = (inflation_rate * relative_weight * 86400 * 365 / working_supply * 0.4) / token_price
+            rate = (
+                inflation_rate * relative_weight * 86400 * 365 / working_supply * 0.4
+            ) / token_price
         except ZeroDivisionError:
             rate = 0
 

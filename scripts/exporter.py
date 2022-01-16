@@ -9,6 +9,7 @@ from yearn.outputs import victoria
 logger = logging.getLogger('yearn.exporter')
 sleep_interval = int(os.environ.get('SLEEP_SECONDS', '0'))
 
+
 def main():
     yearn = Yearn()
     for block in chain.new_blocks(height_buffer=1):

@@ -39,7 +39,11 @@ logger = logging.getLogger("yearn.apy")
 
 
 def wrap_vault(
-    vault: Union[VaultV1, VaultV2], samples: ApySamples, aliases: dict, icon_url: str, assets_metadata: dict
+    vault: Union[VaultV1, VaultV2],
+    samples: ApySamples,
+    aliases: dict,
+    icon_url: str,
+    assets_metadata: dict,
 ) -> dict:
     apy_error = Apy("error", 0, 0, ApyFees(0, 0), ApyPoints(0, 0, 0))
     try:
@@ -55,15 +59,24 @@ def wrap_vault(
         strategies = [
             {
                 "address": str(vault.strategy),
-                "name": vault.strategy.getName() if hasattr(vault.strategy, "getName") else vault.strategy._name,
+                "name": vault.strategy.getName()
+                if hasattr(vault.strategy, "getName")
+                else vault.strategy._name,
             }
         ]
     else:
-        strategies = [{"address": str(strategy.strategy), "name": strategy.name} for strategy in vault.strategies]
+        strategies = [
+            {"address": str(strategy.strategy), "name": strategy.name}
+            for strategy in vault.strategies
+        ]
 
     inception = contract_creation_block(str(vault.vault))
 
-    token_alias = aliases[str(vault.token)]["symbol"] if str(vault.token) in aliases else vault.token.symbol()
+    token_alias = (
+        aliases[str(vault.token)]["symbol"]
+        if str(vault.token) in aliases
+        else vault.token.symbol()
+    )
     vault_alias = token_alias
 
     tvl = vault.tvl()
@@ -71,7 +84,10 @@ def wrap_vault(
     migration = None
 
     if str(vault.vault) in assets_metadata:
-        migration = {"available": assets_metadata[str(vault.vault)][1], "address": assets_metadata[str(vault.vault)][2]}
+        migration = {
+            "available": assets_metadata[str(vault.vault)][1],
+            "address": assets_metadata[str(vault.vault)][2],
+        }
 
     object = {
         "inception": inception,
@@ -81,10 +97,14 @@ def wrap_vault(
         "display_name": vault_alias,
         "icon": icon_url % str(vault.vault),
         "token": {
-            "name": vault.token.name() if hasattr(vault.token, "name") else vault.token._name,
+            "name": vault.token.name()
+            if hasattr(vault.token, "name")
+            else vault.token._name,
             "symbol": vault.token.symbol() if hasattr(vault.token, "symbol") else None,
             "address": str(vault.token),
-            "decimals": vault.token.decimals() if hasattr(vault.token, "decimals") else None,
+            "decimals": vault.token.decimals()
+            if hasattr(vault.token, "decimals")
+            else None,
             "display_name": token_alias,
             "icon": icon_url % str(vault.token),
         },
@@ -93,14 +113,20 @@ def wrap_vault(
         "strategies": strategies,
         "endorsed": vault.is_endorsed if hasattr(vault, "is_endorsed") else True,
         "version": vault.api_version if hasattr(vault, "api_version") else "0.1",
-        "decimals": vault.decimals if hasattr(vault, "decimals") else vault.vault.decimals(),
+        "decimals": vault.decimals
+        if hasattr(vault, "decimals")
+        else vault.vault.decimals(),
         "type": "v2" if isinstance(vault, VaultV2) else "v1",
-        "emergency_shutdown": vault.vault.emergencyShutdown() if hasattr(vault.vault, "emergencyShutdown") else False,
+        "emergency_shutdown": vault.vault.emergencyShutdown()
+        if hasattr(vault.vault, "emergencyShutdown")
+        else False,
         "updated": int(time()),
         "migration": migration,
     }
 
-    if chain.id == 1 and any([isinstance(vault, t) for t in [Backscratcher, YveCRVJar]]):
+    if chain.id == 1 and any(
+        [isinstance(vault, t) for t in [Backscratcher, YveCRVJar]]
+    ):
         object["special"] = True
 
     return object
@@ -115,6 +141,7 @@ def get_assets_metadata(vault_v2: list) -> dict:
         assets_metadata[datum[0]] = datum[-1]
     return assets_metadata
 
+
 def registry_adapter():
     if chain.id == Network.Mainnet:
         registry_adapter_address = web3.ens.resolve("lens.ychad.eth")
@@ -126,13 +153,17 @@ def registry_adapter():
 def main():
     data = []
 
-    aliases_repo_url = "https://api.github.com/repos/yearn/yearn-assets/git/refs/heads/master"
+    aliases_repo_url = (
+        "https://api.github.com/repos/yearn/yearn-assets/git/refs/heads/master"
+    )
     aliases_repo = requests.get(aliases_repo_url).json()
     commit = aliases_repo["object"]["sha"]
 
     icon_url = f"https://rawcdn.githack.com/yearn/yearn-assets/{commit}/icons/multichain-tokens/1/%s/logo-128.png"
 
-    aliases_url = "https://raw.githubusercontent.com/yearn/yearn-assets/master/icons/aliases.json"
+    aliases_url = (
+        "https://raw.githubusercontent.com/yearn/yearn-assets/master/icons/aliases.json"
+    )
     aliases = requests.get(aliases_url).json()
     aliases = {alias["address"]: alias for alias in aliases}
 
@@ -143,7 +174,9 @@ def main():
     if chain.id == Network.Mainnet:
         special = [YveCRVJar(), Backscratcher()]
         registry_v1 = RegistryV1()
-        vaults = itertools.chain(special, registry_v1.vaults, registry_v2.vaults, registry_v2.experiments)
+        vaults = itertools.chain(
+            special, registry_v1.vaults, registry_v2.vaults, registry_v2.experiments
+        )
     elif chain.id == Network.Fantom:
         vaults = registry_v2.vaults
 
@@ -206,7 +239,9 @@ def with_monitoring():
     updater = Updater(os.environ.get('TG_YFIREBOT'))
     now = datetime.now()
     message = f"`[{now}]`\n⚙️ API (vaults) for {Network(chain.id).name} is updating..."
-    ping = updater.bot.send_message(chat_id=private_group, text=message, parse_mode="Markdown")
+    ping = updater.bot.send_message(
+        chat_id=private_group, text=message, parse_mode="Markdown"
+    )
     ping = ping.message_id
     try:
         main()
@@ -214,9 +249,20 @@ def with_monitoring():
         tb = traceback.format_exc()
         now = datetime.now()
         tags = " ".join(telegram_users_to_alert)
-        message = f"`[{now}]`\n🔥 API (vaults) update for {Network(chain.id).name} failed!\n```\n{tb}\n```\n{tags}"[:4000]
-        updater.bot.send_message(chat_id=private_group, text=message, parse_mode="Markdown", reply_to_message_id=ping)
-        updater.bot.send_message(chat_id=public_group, text=message, parse_mode="Markdown")
+        message = f"`[{now}]`\n🔥 API (vaults) update for {Network(chain.id).name} failed!\n```\n{tb}\n```\n{tags}"[
+            :4000
+        ]
+        updater.bot.send_message(
+            chat_id=private_group,
+            text=message,
+            parse_mode="Markdown",
+            reply_to_message_id=ping,
+        )
+        updater.bot.send_message(
+            chat_id=public_group, text=message, parse_mode="Markdown"
+        )
         raise error
     message = f"✅ API (vaults) update for {Network(chain.id).name} successful!"
-    updater.bot.send_message(chat_id=private_group, text=message, reply_to_message_id=ping)
+    updater.bot.send_message(
+        chat_id=private_group, text=message, reply_to_message_id=ping
+    )

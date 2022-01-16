@@ -42,11 +42,21 @@ def get_formatted_lend_rates(vault: VaultV2, samples: ApySamples) -> list:
     lend_rate_apr = ((apy.net_apy + 1) ** (1 / 365) - 1) * 365
     if apy.type == 'crv':
         return [
-            {"apr": lend_rate_apr, "apy": lend_rate_apy, "tokenSymbol": contract(curve_pool_token_address).symbol()}
+            {
+                "apr": lend_rate_apr,
+                "apy": lend_rate_apy,
+                "tokenSymbol": contract(curve_pool_token_address).symbol(),
+            }
             for curve_pool_token_address in curve.get_underlying_coins(vault.token)
         ]
     else:
-        return [{"apr": lend_rate_apr, "apy": lend_rate_apy, "tokenSymbol": vault.token.symbol()}]
+        return [
+            {
+                "apr": lend_rate_apr,
+                "apy": lend_rate_apy,
+                "tokenSymbol": vault.token.symbol(),
+            }
+        ]
 
 
 def write_json(json_dict: dict, path: str):
@@ -74,15 +84,21 @@ def main():
         yveCrv_symbol = yveCrvVault.vault.symbol()
         yveCrv_lend_rates = get_formatted_lend_rates(yveCrvVault, samples)
         loanscan_vault_symbols.append(yveCrv_symbol)
-        loanscan_vault_json.append({"symbol": yveCrv_symbol, "lendRates": yveCrv_lend_rates})
+        loanscan_vault_json.append(
+            {"symbol": yveCrv_symbol, "lendRates": yveCrv_lend_rates}
+        )
         # Don't simplify above this comment
     except Exception as yveCrvException:
-        logger.info(f'failed to reduce yveCrv lendRate, {str(yveCrvVault.vault)} {yveCrvVault}')
+        logger.info(
+            f'failed to reduce yveCrv lendRate, {str(yveCrvVault.vault)} {yveCrvVault}'
+        )
         logger.error(yveCrvException)
 
     for vault in registry_v2.vaults:
         try:
-            vault_not_endorsed = not (hasattr(vault, "is_endorsed") and vault.is_endorsed)
+            vault_not_endorsed = not (
+                hasattr(vault, "is_endorsed") and vault.is_endorsed
+            )
             if vault_not_endorsed:
                 continue
 
@@ -98,10 +114,14 @@ def main():
             vault_symbol = vault.vault.symbol()
             vault_lend_rates = get_formatted_lend_rates(vault, samples)
             loanscan_vault_symbols.append(vault_symbol)
-            loanscan_vault_json.append({"symbol": vault_symbol, "lendRates": vault_lend_rates})
+            loanscan_vault_json.append(
+                {"symbol": vault_symbol, "lendRates": vault_lend_rates}
+            )
             # Don't simplify above this comment
         except Exception as error:
-            logger.info(f'failed to reduce loanscan lendRate for vault {str(vault.vault)} {vault}')
+            logger.info(
+                f'failed to reduce loanscan lendRate for vault {str(vault.vault)} {vault}'
+            )
             logger.error(error)
 
     out_path = "generated"
@@ -115,7 +135,10 @@ def main():
     write_json(loanscan_vault_symbols, os.path.join(loanscan_path, "manifest"))
     write_json(loanscan_vault_json, os.path.join(loanscan_path, "all"))
     for loanscan_vault in loanscan_vault_json:
-        write_json({"lendRates": loanscan_vault["lendRates"]}, os.path.join(loanscan_path, loanscan_vault["symbol"]))
+        write_json(
+            {"lendRates": loanscan_vault["lendRates"]},
+            os.path.join(loanscan_path, loanscan_vault["symbol"]),
+        )
 
     aws_bucket = os.environ.get("AWS_BUCKET")
     s3 = boto3.client(
@@ -132,7 +155,10 @@ def main():
                 file_path,
                 aws_bucket,
                 file_path_s3,
-                ExtraArgs={'ContentType': "application/json", 'CacheControl': "max-age=1800"},
+                ExtraArgs={
+                    'ContentType': "application/json",
+                    'CacheControl': "max-age=1800",
+                },
             )
         except Exception as error:
             logger.info(f'failed to upload {file_path} to s3')
@@ -150,7 +176,9 @@ def with_monitoring():
     updater = Updater(os.environ.get('TG_YFIREBOT'))
     now = datetime.now()
     message = f"`[{now}]`\n⚙️ API (loanscan) is updating..."
-    ping = updater.bot.send_message(chat_id=private_group, text=message, parse_mode="Markdown")
+    ping = updater.bot.send_message(
+        chat_id=private_group, text=message, parse_mode="Markdown"
+    )
     ping = ping.message_id
     try:
         main()
@@ -159,8 +187,17 @@ def with_monitoring():
         now = datetime.now()
         tags = " ".join(telegram_users_to_alert)
         message = f"`[{now}]`\n🔥 API (loanscan) update failed!\n```\n{tb}\n```\n{tags}"
-        updater.bot.send_message(chat_id=private_group, text=message, parse_mode="Markdown", reply_to_message_id=ping)
-        updater.bot.send_message(chat_id=public_group, text=message, parse_mode="Markdown")
+        updater.bot.send_message(
+            chat_id=private_group,
+            text=message,
+            parse_mode="Markdown",
+            reply_to_message_id=ping,
+        )
+        updater.bot.send_message(
+            chat_id=public_group, text=message, parse_mode="Markdown"
+        )
         raise error
     message = "✅ API (loanscan) update successful!"
-    updater.bot.send_message(chat_id=private_group, text=message, reply_to_message_id=ping)
+    updater.bot.send_message(
+        chat_id=private_group, text=message, reply_to_message_id=ping
+    )
