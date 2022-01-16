@@ -27,7 +27,11 @@ def get_aggregated_tvl_data(hourly_resolution):
 @ttl_cache(600)
 def get_latest_tvl_data():
     with db_session:
-        return select((s.block.snapshot, sum(s.assets)) for s in Snapshot).order_by(-1).first()
+        return (
+            select((s.block.snapshot, sum(s.assets)) for s in Snapshot)
+            .order_by(-1)
+            .first()
+        )
 
 
 @ttl_cache(600)
@@ -48,7 +52,9 @@ def get_detailed_tvl_data(hourly_resolution):
 def read_daily_tvl(hourly_resolution: int = 24):
     """Daily historical TVL snapshot."""
     if hourly_resolution not in ALLOWED_HOURLY_RESOLUTION:
-        raise HTTPException(400, f"hourly_resolution must be {ALLOWED_HOURLY_RESOLUTION}")
+        raise HTTPException(
+            400, f"hourly_resolution must be {ALLOWED_HOURLY_RESOLUTION}"
+        )
     return get_aggregated_tvl_data(hourly_resolution)
 
 
@@ -63,5 +69,7 @@ def read_latest_tvl():
 def read_daily_tvl_detailed(hourly_resolution: int = 24):
     """Detailed daily historical TVL snapshot broken down by product and contract."""
     if hourly_resolution not in ALLOWED_HOURLY_RESOLUTION:
-        raise HTTPException(400, f"hourly_resolution must be {ALLOWED_HOURLY_RESOLUTION}")
+        raise HTTPException(
+            400, f"hourly_resolution must be {ALLOWED_HOURLY_RESOLUTION}"
+        )
     return get_detailed_tvl_data(hourly_resolution)

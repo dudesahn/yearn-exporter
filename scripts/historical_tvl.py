@@ -12,8 +12,12 @@ from yearn.yearn import Yearn
 logger = logging.getLogger("yearn.historical_tvl")
 
 START_DATE = {
-    Network.Mainnet: datetime(2020, 2, 12, tzinfo=timezone.utc),  # first iearn deployment
-    Network.Fantom: datetime(2021, 4, 30, tzinfo=timezone.utc),  # ftm vault deployment 2021-09-02
+    Network.Mainnet: datetime(
+        2020, 2, 12, tzinfo=timezone.utc
+    ),  # first iearn deployment
+    Network.Fantom: datetime(
+        2021, 4, 30, tzinfo=timezone.utc
+    ),  # ftm vault deployment 2021-09-02
     Network.Arbitrum: datetime(2021, 9, 14, tzinfo=timezone.utc),  # ironbank deployemnt
 }
 

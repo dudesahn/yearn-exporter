@@ -101,7 +101,9 @@ class Registry:
         output = defaultdict(dict)
         for m, price in zip(markets, prices):
             res = results[m.vault]
-            exchange_rate = res["exchangeRateCurrent"] * 10 ** (m.cdecimals - m.decimals - 18)
+            exchange_rate = res["exchangeRateCurrent"] * 10 ** (
+                m.cdecimals - m.decimals - 18
+            )
             for attr in ["getCash", "totalBorrows", "totalReserves"]:
                 res[attr] /= 10 ** m.decimals
 
@@ -151,7 +153,13 @@ class Registry:
             return self.vaults
 
         try:
-            active_markets_at_block = self.ironbank.getAllMarkets(block_identifier=block)
-            return [market for market in self.vaults if market.vault in active_markets_at_block]
+            active_markets_at_block = self.ironbank.getAllMarkets(
+                block_identifier=block
+            )
+            return [
+                market
+                for market in self.vaults
+                if market.vault in active_markets_at_block
+            ]
         except ValueError:
             return []

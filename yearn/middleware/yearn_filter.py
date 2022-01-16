@@ -4,9 +4,7 @@ from typing import (
     Union,
 )
 
-from eth_utils import (
-    apply_key_map
-)
+from eth_utils import apply_key_map
 
 from web3._utils.rpc_abi import (
     RPC,
@@ -16,34 +14,31 @@ from web3.types import (  # noqa: F401
     RPCResponse,
 )
 
-from web3.middleware.filter import (
-    RequestLogs,
-    RequestBlocks
-)
+from web3.middleware.filter import RequestLogs, RequestBlocks
 
 from yearn.middleware.filter_manager import FilterManager
 
 
-FILTER_PARAMS_KEY_MAP = {
-    "toBlock": "to_block",
-    "fromBlock": "from_block"
-}
+FILTER_PARAMS_KEY_MAP = {"toBlock": "to_block", "fromBlock": "from_block"}
 
-NEW_FILTER_METHODS = set([
-    "eth_newBlockFilter",
-    "eth_newFilter",
-])
+NEW_FILTER_METHODS = set(
+    [
+        "eth_newBlockFilter",
+        "eth_newFilter",
+    ]
+)
 
-FILTER_CHANGES_METHODS = set([
-    "eth_getFilterChanges",
-    "eth_getFilterLogs",
-])
+FILTER_CHANGES_METHODS = set(
+    [
+        "eth_getFilterChanges",
+        "eth_getFilterLogs",
+    ]
+)
 
 
 def local_filter_middleware(
     make_request: Callable[[RPCEndpoint, Any], Any], w3: "Web3"
 ) -> Callable[[RPCEndpoint, Any], RPCResponse]:
-
     def middleware(method: RPCEndpoint, params: Any) -> RPCResponse:
         filter_man = FilterManager()
 
@@ -51,7 +46,9 @@ def local_filter_middleware(
             filter_id = filter_man.next_filter_id()
             _filter: Union[RequestLogs, RequestBlocks]
             if method == RPC.eth_newFilter:
-                _filter = RequestLogs(w3, **apply_key_map(FILTER_PARAMS_KEY_MAP, params[0]))
+                _filter = RequestLogs(
+                    w3, **apply_key_map(FILTER_PARAMS_KEY_MAP, params[0])
+                )
 
             elif method == RPC.eth_newBlockFilter:
                 _filter = RequestBlocks(w3)

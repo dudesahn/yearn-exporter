@@ -77,7 +77,12 @@ class Strategy:
             self.process_events(events)
             if not self._done.is_set():
                 self._done.set()
-                logger.info("loaded %d harvests %s in %.3fs", len(self._harvests), self.name, time.time() - start)
+                logger.info(
+                    "loaded %d harvests %s in %.3fs",
+                    len(self._harvests),
+                    self.name,
+                    time.time() - start,
+                )
             if not self._watch_events_forever:
                 return
             time.sleep(300)

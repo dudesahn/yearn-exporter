@@ -2,6 +2,7 @@ from yearn.utils import Singleton
 import itertools
 from eth_utils import to_hex
 
+
 class FilterManager(metaclass=Singleton):
     def __init__(self):
         self.filters = {}

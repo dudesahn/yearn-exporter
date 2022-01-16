@@ -12,7 +12,12 @@ abi = {
     "inputs": [
         {"indexed": True, "internalType": "address", "name": "from", "type": "address"},
         {"indexed": True, "internalType": "address", "name": "to", "type": "address"},
-        {"indexed": False, "internalType": "uint256", "name": "value", "type": "uint256"},
+        {
+            "indexed": False,
+            "internalType": "uint256",
+            "name": "value",
+            "type": "uint256",
+        },
     ],
     "name": "Transfer",
     "type": "event",
@@ -25,16 +30,22 @@ base.mkdir(parents=True, exist_ok=True)
 def find_double_fees(withdrawals, fees, blacklist=None):
     assert len(withdrawals) and len(fees), "no events loaded"
     print(f"processing {len(withdrawals)=} and {len(fees)=}")
-    overlap = {log["transactionHash"] for log in withdrawals} & {log["transactionHash"] for log in fees}
+    overlap = {log["transactionHash"] for log in withdrawals} & {
+        log["transactionHash"] for log in fees
+    }
     print(f"{len(overlap)=}")
-    withdrawals = decode_logs([log for log in withdrawals if log["transactionHash"] in overlap])
+    withdrawals = decode_logs(
+        [log for log in withdrawals if log["transactionHash"] in overlap]
+    )
     fees = decode_logs([log for log in fees if log["transactionHash"] in overlap])
     tx_to_refund = {event.transaction_hash: tuple(event.values())[2] for event in fees}
     refunds = Counter()
     for item in withdrawals:
         tx = item.transaction_hash
         is_contract = bool(web3.eth.get_code(tuple(item.values())[0]))
-        user = chain.get_transaction(tx).sender if is_contract else tuple(item.values())[0]
+        user = (
+            chain.get_transaction(tx).sender if is_contract else tuple(item.values())[0]
+        )
         if blacklist and user in blacklist:
             continue
         refunds[user] += tx_to_refund[item.transaction_hash]
@@ -43,7 +54,9 @@ def find_double_fees(withdrawals, fees, blacklist=None):
 
 
 def find_transfers(address, from_address, to_address, start_block, end_block):
-    topics = construct_event_topic_set(abi, web3.codec, {"from": from_address, "to": to_address})
+    topics = construct_event_topic_set(
+        abi, web3.codec, {"from": from_address, "to": to_address}
+    )
     return get_logs_asap(address, topics, start_block, end_block)
 
 
@@ -69,7 +82,10 @@ def reimburse_weth_in_dai():
 def reimburse_dai_usdc_usdt_in_3pool():
     start_block = 10753482
     end_block = 12087852
-    path = base / f"dai-usdc-usdt-double-fees-refund-in-3crv-{start_block}-{end_block}.toml"
+    path = (
+        base
+        / f"dai-usdc-usdt-double-fees-refund-in-3crv-{start_block}-{end_block}.toml"
+    )
     strategy_3crv = "0xC59601F0CC49baa266891b7fc63d2D5FE097A79D"
     _3crv = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
     treasury_vault = "0x93A62dA5a14C80f265DAbC077fCEE437B1a0Efde"
@@ -80,7 +96,9 @@ def reimburse_dai_usdc_usdt_in_3pool():
         "0x14EC0cD2aCee4Ce37260b925F74648127a889a28": "ydai exploiter",
     }
 
-    withdrawals = find_transfers([yusdc, ydai, yusdt], None, ZERO_ADDRESS, start_block, end_block)
+    withdrawals = find_transfers(
+        [yusdc, ydai, yusdt], None, ZERO_ADDRESS, start_block, end_block
+    )
     fees = find_transfers(_3crv, strategy_3crv, treasury_vault, start_block, end_block)
     refunds = find_double_fees(withdrawals, fees, blacklist)
 

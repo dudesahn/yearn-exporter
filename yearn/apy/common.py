@@ -10,6 +10,7 @@ from semantic_version.base import Version
 
 SECONDS_PER_YEAR = 31_556_952.0
 
+
 @dataclass
 class SharePricePoint:
     block: int
@@ -58,8 +59,14 @@ def calculate_roi(after: SharePricePoint, before: SharePricePoint) -> float:
     # calculate our average blocks per day in the past week
     now = web3.eth.block_number
     now_time = datetime.today()
-    blocks_per_day = int((now - closest_block_after_timestamp((now_time - timedelta(days=7)).timestamp())) / 7)
-    
+    blocks_per_day = int(
+        (
+            now
+            - closest_block_after_timestamp((now_time - timedelta(days=7)).timestamp())
+        )
+        / 7
+    )
+
     # calculate our annualized return for a vault
     pps_delta = (after.price - before.price) / (before.price or 1)
     block_delta = after.block - before.block
@@ -75,5 +82,7 @@ def get_samples(now_time: Optional[datetime] = None) -> ApySamples:
     else:
         now = closest_block_after_timestamp(now_time.timestamp())
     week_ago = closest_block_after_timestamp((now_time - timedelta(days=7)).timestamp())
-    month_ago = closest_block_after_timestamp((now_time - timedelta(days=31)).timestamp())
+    month_ago = closest_block_after_timestamp(
+        (now_time - timedelta(days=31)).timestamp()
+    )
     return ApySamples(now, week_ago, month_ago)

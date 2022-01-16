@@ -63,8 +63,13 @@ def get_code(address, block=None):
     try:
         return web3.eth.get_code(address, block_identifier=block)
     except ValueError as exc:
-        if isinstance(exc.args[0], dict) and 'missing trie node' in exc.args[0]['message']:
-            raise ArchiveNodeRequired('querying historical state requires an archive node')
+        if (
+            isinstance(exc.args[0], dict)
+            and 'missing trie node' in exc.args[0]['message']
+        ):
+            raise ArchiveNodeRequired(
+                'querying historical state requires an archive node'
+            )
         raise exc
 
 
@@ -95,7 +100,9 @@ def contract_creation_block(address) -> int:
 
     # only happens on fantom
     if hi == barrier + 1:
-        logger.warning('could not determine creation block for a contract deployed prior to barrier')
+        logger.warning(
+            'could not determine creation block for a contract deployed prior to barrier'
+        )
         return 0
 
     return hi if hi != end else None
@@ -117,6 +124,7 @@ class Singleton(type):
 # cached Contract instance, saves about 20ms of init time
 _contract_lock = threading.Lock()
 _contract = lru_cache(maxsize=None)(Contract)
+
 
 def contract(address):
     with _contract_lock:

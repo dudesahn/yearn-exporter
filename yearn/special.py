@@ -15,6 +15,7 @@ from yearn.utils import contract_creation_block, contract
 from yearn.apy import ApySamples
 from yearn.exceptions import PriceError
 
+
 class YveCRVJar:
     def __init__(self):
         self.id = "yvecrv-eth"
@@ -36,8 +37,10 @@ class YveCRVJar:
 
     def apy(self, _: ApySamples) -> Apy:
         data = requests.get("https://api.pickle.finance/prod/protocol/pools").json()
-        yvboost_eth_pool  = [pool for pool in data if pool["identifier"] == "yvboost-eth"][0]
-        apy = yvboost_eth_pool["apy"]  / 100.
+        yvboost_eth_pool = [
+            pool for pool in data if pool["identifier"] == "yvboost-eth"
+        ][0]
+        apy = yvboost_eth_pool["apy"] / 100.0
         points = ApyPoints(apy, apy, apy)
         return Apy("yvecrv-jar", apy, apy, ApyFees(), points=points)
 
@@ -45,6 +48,7 @@ class YveCRVJar:
         data = requests.get("https://api.pickle.finance/prod/protocol/value").json()
         tvl = data[self.id]
         return Tvl(tvl=tvl)
+
 
 class Backscratcher:
     def __init__(self):
@@ -54,7 +58,10 @@ class Backscratcher:
         self.proxy = contract("0xF147b8125d2ef93FB6965Db97D6746952a133934")
 
     def describe(self, block=None):
-        crv_locked = curve.voting_escrow.balanceOf["address"](self.proxy, block_identifier=block) / 1e18
+        crv_locked = (
+            curve.voting_escrow.balanceOf["address"](self.proxy, block_identifier=block)
+            / 1e18
+        )
         crv_price = magic.get_price(curve.crv, block=block)
         return {
             'totalSupply': crv_locked,
@@ -63,7 +70,10 @@ class Backscratcher:
         }
 
     def total_value_at(self, block=None):
-        crv_locked = curve.voting_escrow.balanceOf["address"](self.proxy, block_identifier=block) / 1e18
+        crv_locked = (
+            curve.voting_escrow.balanceOf["address"](self.proxy, block_identifier=block)
+            / 1e18
+        )
         crv_price = magic.get_price(curve.crv, block=block)
         return crv_locked * crv_price
 
@@ -73,12 +83,14 @@ class Backscratcher:
 
     def apy(self, _: ApySamples) -> Apy:
         curve_3_pool = contract("0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7")
-        curve_reward_distribution = contract("0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc")
+        curve_reward_distribution = contract(
+            "0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc"
+        )
         curve_voting_escrow = contract("0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2")
         voter = "0xF147b8125d2ef93FB6965Db97D6746952a133934"
         crv_price = magic.get_price("0xD533a949740bb3306d119CC777fa900bA034cd52")
         yvecrv_price = magic.get_price("0xc5bDdf9843308380375a611c18B50Fb9341f502A")
-        
+
         total_vecrv = curve_voting_escrow.totalSupply()
         yearn_vecrv = curve_voting_escrow.balanceOf(voter)
         vault_supply = self.vault.totalSupply()
@@ -88,7 +100,9 @@ class Backscratcher:
         tokens_per_week = curve_reward_distribution.tokens_per_week(epoch) / 1e18
         virtual_price = curve_3_pool.get_virtual_price() / 1e18
         # although we call this APY, this is actually APR since there is no compounding
-        apy = (tokens_per_week * virtual_price * 52) / ((total_vecrv / 1e18) * crv_price)
+        apy = (tokens_per_week * virtual_price * 52) / (
+            (total_vecrv / 1e18) * crv_price
+        )
         vault_boost = (yearn_vecrv / vault_supply) * (crv_price / yvecrv_price)
         composite = {
             "currentBoost": vault_boost,
@@ -105,10 +119,12 @@ class Backscratcher:
             price = magic.get_price(self.token, block=block)
         except PriceError:
             price = None
-        tvl = total_assets * price / 10 ** self.vault.decimals(block_identifier=block) if price else None
-        return Tvl(total_assets, price, tvl) 
-
-        
+        tvl = (
+            total_assets * price / 10 ** self.vault.decimals(block_identifier=block)
+            if price
+            else None
+        )
+        return Tvl(total_assets, price, tvl)
 
 
 class Ygov:
@@ -142,7 +158,9 @@ class Registry:
     def describe(self, block=None):
         # not supported yet
         vaults = self.active_vaults_at(block)
-        data = Parallel(4, "threading")(delayed(vault.describe)(block=block) for vault in vaults)
+        data = Parallel(4, "threading")(
+            delayed(vault.describe)(block=block) for vault in vaults
+        )
         return {vault.name: desc for vault, desc in zip(vaults, data)}
 
     def total_value_at(self, block=None):
@@ -152,5 +170,9 @@ class Registry:
     def active_vaults_at(self, block=None):
         vaults = list(self.vaults)
         if block:
-            vaults = [vault for vault in self.vaults if contract_creation_block(str(vault.vault)) <= block]
+            vaults = [
+                vault
+                for vault in self.vaults
+                if contract_creation_block(str(vault.vault)) <= block
+            ]
         return vaults

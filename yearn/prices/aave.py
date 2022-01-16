@@ -49,10 +49,12 @@ class Aave(metaclass=Singleton):
             reserves = fetch_multicall(
                 *[[lending_pool, 'getReserveData', token] for token in tokens]
             )
-            atoken_to_token.update({
-                reserve['aTokenAddress']: token
-                for token, reserve in zip(tokens, reserves)
-            })
+            atoken_to_token.update(
+                {
+                    reserve['aTokenAddress']: token
+                    for token, reserve in zip(tokens, reserves)
+                }
+            )
 
         return atoken_to_token
 

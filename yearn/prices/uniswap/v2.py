@@ -46,7 +46,9 @@ class UniswapV2:
         self.router = contract(router)
 
     def __repr__(self):
-        return f'<UniswapV2 name={self.name} factory={self.factory} router={self.router}>'
+        return (
+            f'<UniswapV2 name={self.name} factory={self.factory} router={self.router}>'
+        )
 
     @ttl_cache(ttl=600)
     def get_price(self, token_in, token_out=usdc, block=None):
@@ -68,7 +70,7 @@ class UniswapV2:
             return amount_out / fees
         except ValueError:
             return None
-    
+
     @ttl_cache(ttl=600)
     def lp_price(self, address, block=None):
         """Get Uniswap/Sushiswap LP token price."""

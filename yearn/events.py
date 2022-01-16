@@ -39,7 +39,9 @@ def create_filter(address, topics=None):
         add_deployment_topics(address)
         start_block = contract_creation_block(address)
 
-    return web3.eth.filter({"address": address, "fromBlock": start_block, "topics": topics})
+    return web3.eth.filter(
+        {"address": address, "fromBlock": start_block, "topics": topics}
+    )
 
 
 def add_deployment_topics(address):
@@ -59,7 +61,9 @@ def get_logs_asap(address, topics, from_block=None, to_block=None, verbose=0):
         logger.info('fetching %d batches', len(ranges))
 
     batches = Parallel(8, "threading", verbose=verbose)(
-        delayed(web3.eth.get_logs)({"address": address, "topics": topics, "fromBlock": start, "toBlock": end})
+        delayed(web3.eth.get_logs)(
+            {"address": address, "topics": topics, "fromBlock": start, "toBlock": end}
+        )
         for start, end in ranges
     )
     for batch in batches:
@@ -78,7 +82,11 @@ def logs_to_balance_checkpoints(logs):
         events = decode_logs(block_logs)
         for log in events:
             # ZERO_ADDRESS tracks -totalSupply
-            sender, receiver, amount = log.values()  # there can be several different aliases
+            (
+                sender,
+                receiver,
+                amount,
+            ) = log.values()  # there can be several different aliases
             balances[sender] -= amount
             checkpoints[sender][block] = balances[sender]
             balances[receiver] += amount

@@ -77,7 +77,10 @@ class CompoundMarket:
     @cached_property
     def underlying(self):
         # ceth, creth -> weth
-        if self.token in ['0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5', '0xD06527D5e56A3495252A528C4987003b712860eE']:
+        if self.token in [
+            '0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5',
+            '0xD06527D5e56A3495252A528C4987003b712860eE',
+        ]:
             return contract('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2')
 
         return contract(self.ctoken.underlying())
@@ -107,16 +110,18 @@ class CompoundMarket:
     def get_underlying_price(self, block=None):
         # query the oracle in case it was changed
         oracle = contract(self.unitroller.oracle(block_identifier=block))
-        price = oracle.getUnderlyingPrice(
-            self.token, block_identifier=block
-        ) / 10 ** (36 - self.under_decimals)
+        price = oracle.getUnderlyingPrice(self.token, block_identifier=block) / 10 ** (
+            36 - self.under_decimals
+        )
         return price
 
 
 class Compound:
     def __init__(self, name, unitroller, oracle_base):
         self.name = name
-        self.unitroller = contract(unitroller) if isinstance(unitroller, str) else unitroller()
+        self.unitroller = (
+            contract(unitroller) if isinstance(unitroller, str) else unitroller()
+        )
         self.oracle_base = oracle_base
         self.markets  # load markets on init
 
