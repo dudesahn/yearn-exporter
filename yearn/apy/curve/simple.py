@@ -128,36 +128,43 @@ def simple(vault, samples: ApySamples) -> Apy:
     pool_apr = calculate_roi(now_point, week_ago_point)
     pool_apy = (((pool_apr / 365) + 1) ** 365) - 1
 
-    # FIXME: crvANKR's pool apy going crazy
-    if vault.vault.address == "0xE625F5923303f1CE7A43ACFEFd11fd12f30DbcA4":
-        pool_apy = 0
-
     # prevent circular import for partners calculations
     from yearn.v2.vaults import Vault as VaultV2
-
+    
+    # TODO update and compare with current version in web browser
+    # - accurately get extra CVX pool APR
+    # - report correctly when only one pool (CVX)
+    # - generally clean up the code as much as possible
+    # - fix performance fee calc to pull real data from vault and strategy
+    # length of 2 means we have convex and curve strategies
     if isinstance(vault, VaultV2):
+        # establish our base contracts
         vault_contract = vault.vault
-        if len(vault.strategies) > 0 and hasattr(vault.strategies[0].strategy, "keepCRV"):
-            crv_keep_crv = vault.strategies[0].strategy.keepCRV(block_identifier=block) / 1e4
-        elif len(vault.strategies) > 0 and hasattr(vault.strategies[0].strategy, "keepCrvPercent"):
-            crv_keep_crv = vault.strategies[0].strategy.keepCrvPercent(block_identifier=block) / 1e4
-        else:
+        if len(vault.strategies) == 2:
+            crv_strategy = vault.strategies[0].strategy
+            cvx_strategy = vault.strategies[1].strategy
+            
+            # check for our different variants of curve strategies keepCRV
+            if hasattr(crv_strategy, "keepCRV"):
+                crv_keep_crv = crv_strategy.keepCRV(block_identifier=block) / 1e4
+            elif hasattr(crv_strategy, "keepCrvPercent"):
+                crv_keep_crv = crv_strategy.keepCrvPercent(block_identifier=block) / 1e4
+            else:
+                crv_keep_crv = 0
+            crv_strategy_performance = crv_strategy.performanceFee(block_identifier=block)) / 1e4
+            crv_debt_ratio = vault_contract.strategies(crv_strategy)["debtRatio"] / 1e4
+        else: # for now this means 1 strategy, which is convex
+            cvx_strategy = vault.strategies[0].strategy
+            
+            # zero out our curve stuff
+            crv_strategy_performance = 0
+            crv_apr = 0
+            crv_apr_minus_keep_crv = 0
             crv_keep_crv = 0
-        performance = (vault_contract.performanceFee(block_identifier=block) * 2) / 1e4 if hasattr(vault_contract, "performanceFee") else 0
-        management = vault_contract.managementFee(block_identifier=block) / 1e4 if hasattr(vault_contract, "managementFee") else 0
-    else:
-        strategy = vault.strategy
-        strategist_performance = strategy.performanceFee(block_identifier=block) if hasattr(strategy, "performanceFee") else 0
-        strategist_reward = strategy.strategistReward(block_identifier=block) if hasattr(strategy, "strategistReward") else 0
-        treasury = strategy.treasuryFee(block_identifier=block) if hasattr(strategy, "treasuryFee") else 0
-        crv_keep_crv = strategy.keepCRV(block_identifier=block) / 1e4 if hasattr(strategy, "keepCRV") else 0
-
-        performance = (strategist_reward + strategist_performance + treasury) / 1e4
-        management = 0
-
-    if isinstance(vault, VaultV2) and len(vault.strategies) == 2:
-        crv_strategy = vault.strategies[0].strategy
-        cvx_strategy = vault.strategies[1].strategy
+            crv_debt_ratio = 0
+            cvx_debt_ratio = 1
+        
+        # as long as we have a convex strategy, calculate our convex APR
         convex_voter = addresses[chain.id]['convex_voter_proxy']
         cvx_working_balance = gauge.working_balances(convex_voter, block_identifier=block)
         cvx_gauge_balance = gauge.balanceOf(convex_voter, block_identifier=block)
@@ -173,13 +180,16 @@ def simple(vault, samples: ApySamples) -> Apy:
         cvx_earmark_incentive = cvx_booster.earmarkIncentive(block_identifier=block)
         cvx_fee = (cvx_lock_incentive + cvx_staker_incentive + cvx_earmark_incentive) / 1e4
         cvx_keep_crv = cvx_strategy.keepCRV(block_identifier=block) / 1e4
-
+        
+        # this is some black magic based on CVX emissions from the token contract
         total_cliff = 1e3
         max_supply = 1e2 * 1e6 * 1e18 # ?
         reduction_per_cliff = 1e23
         cvx = contract(addresses[chain.id]['cvx'])
         supply = cvx.totalSupply(block_identifier=block)
         cliff = supply / reduction_per_cliff
+        
+        # convert our CVX yield into CRV to more easily calculate APR
         if supply <= max_supply:
             reduction = total_cliff - cliff
             cvx_minted_as_crv = reduction / total_cliff
@@ -192,17 +202,36 @@ def simple(vault, samples: ApySamples) -> Apy:
         cvx_apr = ((1 - cvx_fee) * cvx_boost * base_apr) * (1 + cvx_printed_as_crv) + reward_apr
         cvx_apr_minus_keep_crv = ((1 - cvx_fee) * cvx_boost * base_apr) * ((1 - cvx_keep_crv) + cvx_printed_as_crv)
         
-        crv_debt_ratio = vault.vault.strategies(crv_strategy)[2] / 1e4
-        cvx_debt_ratio = vault.vault.strategies(cvx_strategy)[2] / 1e4
-    else:
+        cvx_debt_ratio = vault_contract.strategies(cvx_strategy)["debtRatio"] / 1e4
+        
+        cvx_strategy_performance = cvx_strategy.performanceFee(block_identifier=block)) / 1e4
+        
+        # here we need to average together the performance fees
+        vault_performance = (vault_contract.performanceFee(block_identifier=block)) / 1e4 if hasattr(vault_contract, "performanceFee") else 0
+        
+        cvx_performance plus crv_performance etc.
+        
+        management = vault_contract.managementFee(block_identifier=block) / 1e4 if hasattr(vault_contract, "managementFee") else 0
+        
+        
+
+        
+    else: # this is a v1 curve vault
+        strategy = vault.strategy
+        strategist_performance = strategy.performanceFee(block_identifier=block) if hasattr(strategy, "performanceFee") else 0
+        strategist_reward = strategy.strategistReward(block_identifier=block) if hasattr(strategy, "strategistReward") else 0
+        treasury = strategy.treasuryFee(block_identifier=block) if hasattr(strategy, "treasuryFee") else 0
+        crv_keep_crv = strategy.keepCRV(block_identifier=block) / 1e4 if hasattr(strategy, "keepCRV") else 0
+
+        performance = (strategist_reward + strategist_performance + treasury) / 1e4
+        management = 0
+        
+        # convex doesn't exist in v1
         cvx_apr = 0
         cvx_apr_minus_keep_crv = 0
         cvx_keep_crv = 0
         crv_debt_ratio = 1
         cvx_debt_ratio = 0
-
-    crv_apr = base_apr * boost + reward_apr
-    crv_apr_minus_keep_crv = base_apr * boost * (1 - crv_keep_crv)
 
     gross_apr = (1 + (crv_apr * crv_debt_ratio + cvx_apr * cvx_debt_ratio)) * (1 + pool_apy) - 1
 
