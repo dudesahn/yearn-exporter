@@ -79,10 +79,6 @@ def simple(vault, samples: ApySamples) -> Apy:
     else:
         boost = MAX_BOOST
 
-    # FIXME: The HBTC v1 vault is currently still earning yield, but it is no longer boosted.
-    if vault.vault.address == "0x46AFc2dfBd1ea0c0760CAD8262A5838e803A37e5":
-        boost = 1
-
     # TODO: come up with cleaner way to deal with these new gauge rewards
     reward_apr = 0
     if hasattr(gauge, "reward_contract"):
