@@ -2,14 +2,20 @@ import logging
 import threading
 import time
 from typing import List
+from yearn.apy.common import StrategyApy, ApyFees, ApyError, ApySamples
 
 from brownie import Contract, chain
 from eth_utils import encode_hex, event_abi_to_log_topic
+from yearn.prices.curve import curve
+from yearn.networks import Network
+from yearn import apy
+from yearn.prices.curve import curve
 
 from yearn.utils import safe_views, contract
 from yearn.multicall2 import fetch_multicall
 from yearn.events import create_filter, decode_logs
 
+SECONDS_IN_YEAR = 31557600
 
 STRATEGY_VIEWS_SCALED = [
     "maxDebtPerHarvest",
@@ -38,6 +44,7 @@ class Strategy:
             self.name = strategy[:10]
         self._views = safe_views(self.strategy.abi)
         self._harvests = []
+        self._harvests_data = []
         self._topics = [
             [
                 encode_hex(event_abi_to_log_topic(event))
@@ -77,7 +84,12 @@ class Strategy:
             self.process_events(events)
             if not self._done.is_set():
                 self._done.set()
-                logger.info("loaded %d harvests %s in %.3fs", len(self._harvests), self.name, time.time() - start)
+                logger.info(
+                    "loaded %d harvests %s in %.3fs",
+                    len(self._harvests),
+                    self.name,
+                    time.time() - start,
+                )
             if not self._watch_events_forever:
                 break
             time.sleep(300)
@@ -88,6 +100,7 @@ class Strategy:
                 block = event.block_number
                 logger.debug("%s harvested on %d", self.name, block)
                 self._harvests.append(block)
+                self._harvests_data.append({"block_number": block, "event": event})
 
     def load_harvests(self):
         if not self._thread._started.is_set():
@@ -96,8 +109,146 @@ class Strategy:
 
     @property
     def harvests(self) -> List[int]:
-        self.load_harvests()
+        if len(self._harvests) == 0:
+            self.load_harvests()
         return self._harvests
+
+    @property
+    def harvests_data(self):
+        if len(self._harvests) == 0:
+            self.load_harvests()
+        sorted_harvests = sorted(
+            self._harvests_data, key=lambda k: k['block_number'], reverse=True
+        )
+        return sorted_harvests
+
+    @property
+    def debt_ratio(self):
+        return (
+            self.vault.vault.strategies(self.strategy.address).dict()['debtRatio'] / 1e4
+        )
+
+    @property
+    def apy(self) -> StrategyApy:
+        if curve and curve.get_pool(self.strategy.want()):
+            return apy.curve.simple_strategy(self)
+
+        harvests = self.harvests_data
+
+        # Find at least two profitable harvests
+        profitable_harvests_count = 0
+        for idx, harvest in enumerate(harvests):
+            profit = harvest['event']['profit']
+            if profit > 0:
+                profitable_harvests_count += 1
+                if profitable_harvests_count == 1:
+                    latest_harvest_with_profit_idx = idx
+                elif profitable_harvests_count == 2:
+                    second_latest_harvest_with_profit_idx = idx
+                    break
+
+        # Determine fees
+        vault = self.vault.vault
+        strategy = self.strategy
+        strategy_performance_fee = (
+            vault.strategies(strategy.address).dict()['performanceFee'] / 1e4
+        )
+        vault_performance_fee = vault.performanceFee() / 1e4
+        performance_fee = vault_performance_fee + strategy_performance_fee
+        management_fee = (
+            vault.managementFee() / 1e4 if hasattr(vault, "managementFee") else 0
+        )
+        fees = ApyFees(performance=performance_fee, management=management_fee)
+
+        # Not enough profitable harvests
+        if profitable_harvests_count < 2:
+            return StrategyApy("too_few_profitable", 0, 0, fees)
+
+        # Not enough data
+        have_enough_data = second_latest_harvest_with_profit_idx + 1 < len(harvests)
+        if have_enough_data == False:
+            return StrategyApy("too_little_data", 0, 0, fees)
+
+        # Latest profitable harvest
+        latest_harvest_with_profit_current = harvests[latest_harvest_with_profit_idx]
+        second_latest_harvest_with_profit_current = harvests[
+            latest_harvest_with_profit_idx + 1
+        ]
+        harvest_profit_current = latest_harvest_with_profit_current['event']['profit']
+        seconds_between_harvests_current = (
+            chain[latest_harvest_with_profit_current['block_number']]['timestamp']
+            - chain[second_latest_harvest_with_profit_current['block_number']][
+                'timestamp'
+            ]
+        )
+        block_before_profitable_harvest_current = (
+            latest_harvest_with_profit_current['block_number'] - 1
+        )
+        strategy_debt_current = vault.strategies(
+            strategy.address, block_identifier=block_before_profitable_harvest_current
+        ).dict()['totalDebt']
+        if strategy_debt_current == 0:
+            current_apr = 0
+        else:
+            current_apr = (
+                harvest_profit_current
+                / strategy_debt_current
+                * (SECONDS_IN_YEAR / seconds_between_harvests_current)
+            )
+
+        # Second latest profitiable harvest
+        latest_harvest_with_profit_previous = harvests[
+            second_latest_harvest_with_profit_idx
+        ]
+        second_latest_harvest_with_profit_previous = harvests[
+            second_latest_harvest_with_profit_idx + 1
+        ]
+        harvest_profit_previous = latest_harvest_with_profit_previous['event']['profit']
+        seconds_between_harvests_previous = (
+            chain[latest_harvest_with_profit_previous['block_number']]['timestamp']
+            - chain[second_latest_harvest_with_profit_previous['block_number']][
+                'timestamp'
+            ]
+        )
+        block_before_profitable_harvest_previous = (
+            latest_harvest_with_profit_previous['block_number'] - 1
+        )
+        strategy_debt_previous = vault.strategies(
+            strategy.address, block_identifier=block_before_profitable_harvest_previous
+        ).dict()['totalDebt']
+        if strategy_debt_previous == 0:
+            previous_apr = 0
+        else:
+            previous_apr = (
+                harvest_profit_previous
+                / strategy_debt_previous
+                * (SECONDS_IN_YEAR / seconds_between_harvests_previous)
+            )
+
+        # Account for new vault use case
+        if previous_apr == 0 and current_apr > 0:
+            apr = current_apr
+        # Account for early withdrawal edge case
+        elif current_apr > previous_apr * 2 or current_apr * 2 < previous_apr:
+            apr = previous_apr
+        # Account for sunshine use case
+        else:
+            apr = current_apr
+
+        # Subtract fees
+        apr_minus_fees = apr * (1 - performance_fee) - management_fee
+
+        # assume we are compounding every week on mainnet, daily on sidechains
+        if chain.id == 1:
+            compounding = 52
+        else:
+            compounding = 365.25
+
+        # Convert APR to annualized estimated APY
+        net_apy = (1 + (apr_minus_fees / compounding)) ** compounding - 1
+
+        # Return estimated APY
+        return StrategyApy("harvest", apr, net_apy, fees)
 
     def describe(self, block=None):
         results = fetch_multicall(

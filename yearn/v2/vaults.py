@@ -47,7 +47,14 @@ logger = logging.getLogger(__name__)
 
 
 class Vault:
-    def __init__(self, vault, api_version=None, token=None, registry=None, watch_events_forever=True):
+    def __init__(
+        self,
+        vault,
+        api_version=None,
+        token=None,
+        registry=None,
+        watch_events_forever=True,
+    ):
         self._strategies = {}
         self._revoked = {}
         self._reports = []
@@ -116,7 +123,10 @@ class Vault:
         if not self.registry:
             return None
         # experimental vaults are either listed in the registry or have the 0x address suffix in the name
-        return str(self.vault) in self.registry.experiments or re.search(r"0x.*$", self.name) is not None
+        return (
+            str(self.vault) in self.registry.experiments
+            or re.search(r"0x.*$", self.name) is not None
+        )
 
     def load_strategies(self):
         if not self._thread._started.is_set():
@@ -124,7 +134,9 @@ class Vault:
         self._done.wait()
 
     def load_harvests(self):
-        Parallel(8, "threading")(delayed(strategy.load_harvests)() for strategy in self.strategies)
+        Parallel(8, "threading")(
+            delayed(strategy.load_harvests)() for strategy in self.strategies
+        )
 
     def watch_events(self):
         start = time.time()
@@ -135,7 +147,12 @@ class Vault:
             self.process_events(events)
             if not self._done.is_set():
                 self._done.set()
-                logger.info("loaded %d strategies %s in %.3fs", len(self._strategies), self.name, time.time() - start)
+                logger.info(
+                    "loaded %d strategies %s in %.3fs",
+                    len(self._strategies),
+                    self.name,
+                    time.time() - start,
+                )
             if not self._watch_events_forever:
                 break
             time.sleep(300)
@@ -145,28 +162,41 @@ class Vault:
             if event.name == "StrategyAdded":
                 strategy_address = event["strategy"]
                 logger.debug("%s strategy added %s", self.name, strategy_address)
-                try: 
-                    self._strategies[strategy_address] = Strategy(strategy_address, self, self._watch_events_forever)
+                try:
+                    self._strategies[strategy_address] = Strategy(
+                        strategy_address, self, self._watch_events_forever
+                    )
                 except ValueError:
                     print(f"Error loading strategy {strategy_address}")
                     pass
             elif event.name == "StrategyRevoked":
                 logger.debug("%s strategy revoked %s", self.name, event["strategy"])
                 self._revoked[event["strategy"]] = self._strategies.pop(
-                    event["strategy"], Strategy(event["strategy"], self, self._watch_events_forever)
+                    event["strategy"],
+                    Strategy(event["strategy"], self, self._watch_events_forever),
                 )
             elif event.name == "StrategyMigrated":
-                logger.debug("%s strategy migrated %s -> %s", self.name, event["oldVersion"], event["newVersion"])
-                self._revoked[event["oldVersion"]] = self._strategies.pop(
-                    event["oldVersion"], Strategy(event["oldVersion"], self, self._watch_events_forever)
+                logger.debug(
+                    "%s strategy migrated %s -> %s",
+                    self.name,
+                    event["oldVersion"],
+                    event["newVersion"],
                 )
-                self._strategies[event["newVersion"]] = Strategy(event["newVersion"], self, self._watch_events_forever)
+                self._revoked[event["oldVersion"]] = self._strategies.pop(
+                    event["oldVersion"],
+                    Strategy(event["oldVersion"], self, self._watch_events_forever),
+                )
+                self._strategies[event["newVersion"]] = Strategy(
+                    event["newVersion"], self, self._watch_events_forever
+                )
             elif event.name == "StrategyReported":
                 self._reports.append(event)
 
     def describe(self, block=None):
         try:
-            results = fetch_multicall(*[[self.vault, view] for view in self._views], block=block)
+            results = fetch_multicall(
+                *[[self.vault, view] for view in self._views], block=block
+            )
             info = dict(zip(self._views, results))
             for name in info:
                 if name in VAULT_VIEWS_SCALED:
@@ -185,16 +215,11 @@ class Vault:
         info["experimental"] = self.is_experiment
         info["address"] = self.vault
         info["version"] = "v2"
-        
+
         return info
 
     def apy(self, samples: ApySamples):
-        if curve and curve.get_pool(self.token.address):
-            return apy.curve.simple(self, samples)
-        elif Version(self.api_version) >= Version("0.3.2"):
-            return apy.v2.average(self, samples)
-        else:
-            return apy.v2.simple(self, samples)
+        return apy.v2.aggregate(self, samples)
 
     def tvl(self, block=None):
         total_assets = self.vault.totalAssets(block_identifier=block)
@@ -202,5 +227,9 @@ class Vault:
             price = magic.get_price(self.token, block=None)
         except PriceError:
             price = None
-        tvl = total_assets * price / 10 ** self.vault.decimals(block_identifier=block) if price else None
+        tvl = (
+            total_assets * price / 10 ** self.vault.decimals(block_identifier=block)
+            if price
+            else None
+        )
         return Tvl(total_assets, price, tvl)
