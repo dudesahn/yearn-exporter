@@ -48,6 +48,8 @@ def aggregate(vault, samples: ApySamples) -> Apy:
     week_ago_point = SharePricePoint(samples.week_ago, week_ago_price)
     month_ago_point = SharePricePoint(samples.month_ago, month_ago_price)
     inception_point = SharePricePoint(inception_block, inception_price)
+    
+    print("Agg it up")
 
     week_ago_apy = calculate_roi(now_point, week_ago_point)
     month_ago_apy = calculate_roi(now_point, month_ago_point)
@@ -118,6 +120,8 @@ def aggregate(vault, samples: ApySamples) -> Apy:
 
     performance /= 1e4
     management /= 1e4
+    
+    print("Agg it down")
 
     # assume we are compounding every week
     compounding = 52

@@ -131,7 +131,7 @@ class Strategy:
     @property
     def apy(self) -> StrategyApy:
         if curve and curve.get_pool(self.strategy.want()):
-            return apy.curve.simple(self)
+            return apy.curve.simple_strategy(self)
 
         harvests = self.harvests_data
 
