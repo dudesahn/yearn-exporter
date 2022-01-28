@@ -36,7 +36,9 @@ class VaultV1:
         self.strategy = contract(self.strategy)
         self.token = contract(self.token)
         if str(self.vault) not in constants.VAULT_ALIASES:
-            logger.warning("no vault alias for %s, reading from vault.sybmol()", self.vault)
+            logger.warning(
+                "no vault alias for %s, reading from vault.sybmol()", self.vault
+            )
         self.name = constants.VAULT_ALIASES.get(str(self.vault), self.vault.symbol())
         self.decimals = self.vault.decimals()  # vaults inherit decimals from token
         self.scale = 10 ** self.decimals
@@ -49,7 +51,7 @@ class VaultV1:
     def get_strategy(self, block=None):
         if self.name in ["aLINK", "LINK"] or block is None:
             return self.strategy
-        
+
         controller = self.get_controller(block)
         strategy = controller.strategies(self.token, block_identifier=block)
         if strategy != ZERO_ADDRESS:
@@ -129,14 +131,11 @@ class VaultV1:
             info["token price"] = self.get_price(block=block)
 
         info["tvl"] = info["vault balance"] * info["token price"]
-            
+
         return info
 
     def apy(self, samples: ApySamples):
-        if curve.get_pool(self.token.address):
-            return apy.curve.simple(self, samples)
-        else:
-            return apy.v1.simple(self, samples)
+        return apy.v1.simple(self, samples)
 
     def tvl(self, block=None):
         total_assets = self.vault.balance(block_identifier=block)
@@ -144,5 +143,9 @@ class VaultV1:
             price = magic.get_price(self.token, block=block)
         except PriceError:
             price = None
-        tvl = total_assets * price / 10 ** self.vault.decimals(block_identifier=block) if price else None
-        return Tvl(total_assets, price, tvl) 
+        tvl = (
+            total_assets * price / 10 ** self.vault.decimals(block_identifier=block)
+            if price
+            else None
+        )
+        return Tvl(total_assets, price, tvl)
