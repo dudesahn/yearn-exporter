@@ -30,6 +30,7 @@ PER_MAX_BOOST = 1.0 / MAX_BOOST
 
 
 def simple(vault, samples: ApySamples) -> Apy:
+    print("run our curve apy")
     lp_token = vault.token.address
 
     pool_address = curve.get_pool(lp_token)
@@ -230,4 +231,4 @@ def simple(vault, samples: ApySamples) -> Apy:
         "rewards_apr": reward_apr,
     }
 
-    return Apy("crv", gross_apr, net_apy, fees, composite=composite)
+    return Apy("crv", gross_apr, net_apy, fees)

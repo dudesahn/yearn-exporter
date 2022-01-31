@@ -22,7 +22,6 @@ class ApyFees:
     withdrawal: Optional[float] = None
     management: Optional[float] = None
     keep_crv: Optional[float] = None
-    cvx_keep_crv: Optional[float] = None
 
 
 @dataclass
@@ -46,6 +45,8 @@ class Apy:
 class StrategyApy:
     gross_apr: float
     net_apy: float
+    fees: ApyFees
+    strategy_composite: Optional[Dict[str, float]] = None
 
 @dataclass
 class ApySamples:

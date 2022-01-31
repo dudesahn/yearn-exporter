@@ -2,6 +2,9 @@ from bisect import bisect_left
 from datetime import datetime, timedelta
 
 from semantic_version.base import Version
+from yearn.apy.curve import strategy as curve_strategy
+from yearn.prices.curve import curve
+from yearn.utils import contract as get_contract
 
 from yearn.apy.common import (
     Apy,
@@ -11,6 +14,7 @@ from yearn.apy.common import (
     ApySamples,
     SharePricePoint,
     calculate_roi,
+    StrategyApy,
 )
 
 def closest(haystack, needle):
@@ -129,14 +133,14 @@ def average(vault, samples: ApySamples) -> Apy:
         raise ApyError("v2:harvests", "harvests are < 2")
     
     # set our parameters
-    contract = vault.vault
-    price_per_share = contract.pricePerShare
+    vault_contract = vault.vault
+    price_per_share = vault_contract.pricePerShare
     
     # calculate our current price
     now_price = price_per_share(block_identifier=samples.now)
 
     # get our inception data
-    inception_price = 10 ** contract.decimals()
+    inception_price = 10 ** vault_contract.decimals()
     inception_block = harvests[:2][-1]
 
     if now_price == inception_price:
@@ -164,43 +168,109 @@ def average(vault, samples: ApySamples) -> Apy:
 
     strategy_fees = []
     now_apy = 0
+    curve_apy = 0
+    keep_crv = 0
+    composite = {
+        "boost": None,
+        "pool_apy": None,
+        "boosted_apr": None,
+        "base_apr": None,
+        "cvx_apr": None,
+        "rewards_apr": None,
+    }
     
     # generate our average strategy APY and get our fees
     for strategy in vault.strategies:
         total_debt_ratio_allocated = vault.vault.debtRatio()
         if total_debt_ratio_allocated > 0:
-            debt_ratio = (contract.strategies(strategy.strategy)['debtRatio'] / total_debt_ratio_allocated)
+            debt_ratio = (vault_contract.strategies(strategy.strategy)['debtRatio'] / total_debt_ratio_allocated)
         else:
             debt_ratio = 0
         strategy_apy = strategy.apy.net_apy
         now_apy += debt_ratio * strategy_apy
-        performance_fee = contract.strategies(strategy.strategy)['performanceFee']
+        performance_fee = vault_contract.strategies(strategy.strategy)['performanceFee']
         proportional_fee = debt_ratio * performance_fee
         strategy_fees.append(proportional_fee)
+        
+        # aggregate our data for curve vaults
+        if hasattr(strategy.strategy, "keepCRV") or hasattr(strategy.strategy, "keepCrvPercent"):
+            # get price points for our historical pool APY
+            lp_token = vault.token.address
+            pool_address = curve.get_pool(lp_token)
+            print("pool_address", pool_address)
+            pool = get_contract(pool_address)         
+            print("pool", pool)   
+            pool_virtual_price = pool.get_virtual_price
+            
+            # get our virtual prices at different timepoints
+            now_price = pool_virtual_price(block_identifier=samples.now)
+            try:
+                week_ago_pool_price = pool_virtual_price(block_identifier=samples.week_ago)
+            except ValueError:
+                week_ago_pool_price = 1e18
+            try:
+                month_ago_pool_price = pool_virtual_price(block_identifier=samples.month_ago)
+            except ValueError:
+                month_ago_pool_price = 1e18
+            try:
+                inception_pool_price = pool_virtual_price(block_identifier=inception_block)
+            except ValueError:
+                inception_pool_price = 1e18
+            
+            now_point = SharePricePoint(samples.now, now_price)
+            week_ago_point = SharePricePoint(samples.week_ago, week_ago_pool_price)
+            month_ago_point = SharePricePoint(samples.month_ago, month_ago_pool_price)
+            inception_point = SharePricePoint(inception_block, inception_pool_price)
+            
+            # calculate our pool APYs
+            pool_apr = calculate_roi(now_point, week_ago_point)
+            weekly_pool_apy = (((pool_apr / 365) + 1) ** 365) - 1
+            monthly_pool_apr = calculate_roi(now_point, month_ago_point)
+            monthly_pool_apy = (((monthly_pool_apr / 365) + 1) ** 365) - 1
+            inception_pool_apr = calculate_roi(now_point, inception_point)
+            inception_pool_apy = (((inception_pool_apr / 365) + 1) ** 365) - 1
+            
+            # update our historical apys with pool data
+            week_ago_apy = (1+ week_ago_apy) * (1 + weekly_pool_apy) - 1
+            month_ago_apy = (1+ month_ago_apy) * (1 + monthly_pool_apy) - 1
+            inception_apy = (1+ inception_apy) * (1 + inception_pool_apy) - 1
+            
+            curve_apy = curve_strategy.curve_strategy(strategy)
+            curve_apy += curve_apy.net_apy * debt_ratio
+            
+            keep_crv += strategy.apy.fees.keep_crv * debt_ratio
+            boost += curve_apy.strategy_composite["boost"] * debt_ratio
+            pool_apy += curve_apy.strategy_composite["pool_apy"] * debt_ratio
+            base_apr += curve_apy.strategy_composite["base_apr"] * debt_ratio
+            boosted_apr += curve_apy.strategy_composite["boosted_apr"] * debt_ratio
+            reward_apr += curve_apy.strategy_composite["rewards_apr"] * debt_ratio
+            cvx_apr += curve_apy.strategy_composite["cvx_apr"] * debt_ratio
     
-    # we should look at a vault's harvests, age, etc to determine whether to show new APY or not
+    if curve_apy > 0:
+        now_apy = (1 + curve_apy) * (1 + weekly_pool_apy) - 1
+        
+        composite = {
+            "boost": boost,
+            "pool_apy": pool_apy,
+            "base_apr": base_apr,
+            "boosted_apr": boosted_apr,
+            "rewards_apr": reward_apr,
+            "cvx_apr": cvx_apr,
+        }
 
     # use the first non-zero apy, ordered by precedence
     apys = [now_apy, week_ago_apy, month_ago_apy, inception_apy]
     two_months_ago = datetime.now() - timedelta(days=60)
-    if contract.activation() > two_months_ago.timestamp():
+    if vault_contract.activation() > two_months_ago.timestamp():
         # if the vault was activated less than two months ago then it's ok to use
         # the inception apy, otherwise using it isn't representative of the current apy
         apys.append(inception_apy)
 
     net_apy = next((value for value in apys if value != 0), 0)
-
-    # for performance fee, half comes from strategy (strategist share) and half from the vault (treasury share)
-    strategy_fees = []
-    for strategy in vault.strategies: # look at all of our strategies
-        debt_ratio = contract.strategies(strategy.strategy)['debtRatio'] / 10000
-        performance_fee = contract.strategies(strategy.strategy)['performanceFee']
-        proportional_fee = debt_ratio * performance_fee
-        strategy_fees.append(proportional_fee)
     
     strategy_performance = sum(strategy_fees)
-    vault_performance = contract.performanceFee() if hasattr(contract, "performanceFee") else 0
-    management = contract.managementFee() if hasattr(contract, "managementFee") else 0
+    vault_performance = vault_contract.performanceFee() if hasattr(vault_contract, "performanceFee") else 0
+    management = vault_contract.managementFee() if hasattr(vault_contract, "managementFee") else 0
     performance = vault_performance + strategy_performance
 
     performance /= 1e4
@@ -221,5 +291,6 @@ def average(vault, samples: ApySamples) -> Apy:
         net_apy = 0
 
     points = ApyPoints(now_apy, week_ago_apy, month_ago_apy, inception_apy)
-    fees = ApyFees(performance=performance, management=management)
-    return Apy("v2:averaged", gross_apr, net_apy, fees, points=points)
+    fees = ApyFees(performance=performance, management=management, keep_crv=keep_crv)
+    
+    return Apy("v2:aggregate", gross_apr, net_apy, fees, points=points, composite=composite)

@@ -189,9 +189,7 @@ class Vault:
         return info
 
     def apy(self, samples: ApySamples):
-        if curve and curve.get_pool(self.token.address):
-            return apy.curve.simple(self, samples)
-        elif Version(self.api_version) >= Version("0.3.2"):
+        if Version(self.api_version) >= Version("0.3.2"):
             return apy.v2.average(self, samples)
         else:
             return apy.v2.simple(self, samples)
