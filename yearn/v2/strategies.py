@@ -2,7 +2,7 @@ import logging
 import threading
 import time
 from typing import List
-from yearn.apy import StrategyApy
+from yearn.apy.common import StrategyApy, ApyFees
 
 from brownie import Contract, chain
 from eth_utils import encode_hex, event_abi_to_log_topic

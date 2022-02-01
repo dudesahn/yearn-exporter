@@ -111,7 +111,11 @@ def sushi():
 
 def ibeur():
     calculate_apy("0x67e019bfbd5a67207755D04467D6A70c0B75bF60")
-    
+
+def apy_testing():
+    calculate_apy("0x6d765CbE5bC922694afE112C140b8878b9FB0390")
+    calculate_apy("0x2DfB14E32e2F8156ec15a2c21c3A6c053af52Be8")
+
 
 def ibgbp():
     calculate_apy("0x595a68a8c9D5C230001848B69b1947ee2A607164")
