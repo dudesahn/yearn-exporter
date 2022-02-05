@@ -2,7 +2,6 @@ from bisect import bisect_left
 from datetime import datetime, timedelta
 
 from semantic_version.base import Version
-from yearn.apy.curve import strategy as curve_strategy
 from yearn.prices.curve import curve
 from yearn.utils import contract as get_contract
 
@@ -181,6 +180,7 @@ def average(vault, samples: ApySamples) -> Apy:
     
     # generate our average strategy APY and get our fees
     for strategy in vault.strategies:
+        print("This is our strategy var:", strategy.debt_ratio)
         total_debt_ratio_allocated = vault.vault.debtRatio()
         if total_debt_ratio_allocated > 0:
             debt_ratio = (vault_contract.strategies(strategy.strategy)['debtRatio'] / total_debt_ratio_allocated)
@@ -192,71 +192,71 @@ def average(vault, samples: ApySamples) -> Apy:
         proportional_fee = debt_ratio * performance_fee
         strategy_fees.append(proportional_fee)
         
-        # aggregate our data for curve vaults
-        if hasattr(strategy.strategy, "keepCRV") or hasattr(strategy.strategy, "keepCrvPercent"):
-            # get price points for our historical pool APY
-            lp_token = vault.token.address
-            pool_address = curve.get_pool(lp_token)
-            print("pool_address", pool_address)
-            pool = get_contract(pool_address)         
-            print("pool", pool)   
-            pool_virtual_price = pool.get_virtual_price
-            
-            # get our virtual prices at different timepoints
-            now_price = pool_virtual_price(block_identifier=samples.now)
-            try:
-                week_ago_pool_price = pool_virtual_price(block_identifier=samples.week_ago)
-            except ValueError:
-                week_ago_pool_price = 1e18
-            try:
-                month_ago_pool_price = pool_virtual_price(block_identifier=samples.month_ago)
-            except ValueError:
-                month_ago_pool_price = 1e18
-            try:
-                inception_pool_price = pool_virtual_price(block_identifier=inception_block)
-            except ValueError:
-                inception_pool_price = 1e18
-            
-            now_point = SharePricePoint(samples.now, now_price)
-            week_ago_point = SharePricePoint(samples.week_ago, week_ago_pool_price)
-            month_ago_point = SharePricePoint(samples.month_ago, month_ago_pool_price)
-            inception_point = SharePricePoint(inception_block, inception_pool_price)
-            
-            # calculate our pool APYs
-            pool_apr = calculate_roi(now_point, week_ago_point)
-            weekly_pool_apy = (((pool_apr / 365) + 1) ** 365) - 1
-            monthly_pool_apr = calculate_roi(now_point, month_ago_point)
-            monthly_pool_apy = (((monthly_pool_apr / 365) + 1) ** 365) - 1
-            inception_pool_apr = calculate_roi(now_point, inception_point)
-            inception_pool_apy = (((inception_pool_apr / 365) + 1) ** 365) - 1
-            
-            # update our historical apys with pool data
-            week_ago_apy = (1+ week_ago_apy) * (1 + weekly_pool_apy) - 1
-            month_ago_apy = (1+ month_ago_apy) * (1 + monthly_pool_apy) - 1
-            inception_apy = (1+ inception_apy) * (1 + inception_pool_apy) - 1
-            
-            curve_apy = curve_strategy.curve_strategy(strategy)
-            curve_apy += curve_apy.net_apy * debt_ratio
-            
-            keep_crv += strategy.apy.fees.keep_crv * debt_ratio
-            boost += curve_apy.strategy_composite["boost"] * debt_ratio
-            pool_apy += curve_apy.strategy_composite["pool_apy"] * debt_ratio
-            base_apr += curve_apy.strategy_composite["base_apr"] * debt_ratio
-            boosted_apr += curve_apy.strategy_composite["boosted_apr"] * debt_ratio
-            reward_apr += curve_apy.strategy_composite["rewards_apr"] * debt_ratio
-            cvx_apr += curve_apy.strategy_composite["cvx_apr"] * debt_ratio
-    
-    if curve_apy > 0:
-        now_apy = (1 + curve_apy) * (1 + weekly_pool_apy) - 1
-        
-        composite = {
-            "boost": boost,
-            "pool_apy": pool_apy,
-            "base_apr": base_apr,
-            "boosted_apr": boosted_apr,
-            "rewards_apr": reward_apr,
-            "cvx_apr": cvx_apr,
-        }
+#         # aggregate our data for curve vaults
+#         if hasattr(strategy.strategy, "keepCRV") or hasattr(strategy.strategy, "keepCrvPercent"):
+#             # get price points for our historical pool APY
+#             lp_token = vault.token.address
+#             pool_address = curve.get_pool(lp_token)
+#             print("pool_address", pool_address)
+#             pool = get_contract(pool_address)         
+#             print("pool", pool)   
+#             pool_virtual_price = pool.get_virtual_price
+#             
+#             # get our virtual prices at different timepoints
+#             now_price = pool_virtual_price(block_identifier=samples.now)
+#             try:
+#                 week_ago_pool_price = pool_virtual_price(block_identifier=samples.week_ago)
+#             except ValueError:
+#                 week_ago_pool_price = 1e18
+#             try:
+#                 month_ago_pool_price = pool_virtual_price(block_identifier=samples.month_ago)
+#             except ValueError:
+#                 month_ago_pool_price = 1e18
+#             try:
+#                 inception_pool_price = pool_virtual_price(block_identifier=inception_block)
+#             except ValueError:
+#                 inception_pool_price = 1e18
+#             
+#             now_point = SharePricePoint(samples.now, now_price)
+#             week_ago_point = SharePricePoint(samples.week_ago, week_ago_pool_price)
+#             month_ago_point = SharePricePoint(samples.month_ago, month_ago_pool_price)
+#             inception_point = SharePricePoint(inception_block, inception_pool_price)
+#             
+#             # calculate our pool APYs
+#             pool_apr = calculate_roi(now_point, week_ago_point)
+#             weekly_pool_apy = (((pool_apr / 365) + 1) ** 365) - 1
+#             monthly_pool_apr = calculate_roi(now_point, month_ago_point)
+#             monthly_pool_apy = (((monthly_pool_apr / 365) + 1) ** 365) - 1
+#             inception_pool_apr = calculate_roi(now_point, inception_point)
+#             inception_pool_apy = (((inception_pool_apr / 365) + 1) ** 365) - 1
+#             
+#             # update our historical apys with pool data
+#             week_ago_apy = (1+ week_ago_apy) * (1 + weekly_pool_apy) - 1
+#             month_ago_apy = (1+ month_ago_apy) * (1 + monthly_pool_apy) - 1
+#             inception_apy = (1+ inception_apy) * (1 + inception_pool_apy) - 1
+#             
+#             curve_apy = curve_strategy.apy
+#             curve_apy += curve_apy.net_apy * debt_ratio
+#             
+#             keep_crv += curve_apy.fees.keep_crv * debt_ratio
+#             boost += curve_apy.strategy_composite["boost"] * debt_ratio
+#             pool_apy += curve_apy.strategy_composite["pool_apy"] * debt_ratio
+#             base_apr += curve_apy.strategy_composite["base_apr"] * debt_ratio
+#             boosted_apr += curve_apy.strategy_composite["boosted_apr"] * debt_ratio
+#             reward_apr += curve_apy.strategy_composite["rewards_apr"] * debt_ratio
+#             cvx_apr += curve_apy.strategy_composite["cvx_apr"] * debt_ratio
+#     
+#     if curve_apy > 0:
+#         now_apy = (1 + curve_apy) * (1 + weekly_pool_apy) - 1
+#         
+#         composite = {
+#             "boost": boost,
+#             "pool_apy": pool_apy,
+#             "base_apr": base_apr,
+#             "boosted_apr": boosted_apr,
+#             "rewards_apr": reward_apr,
+#             "cvx_apr": cvx_apr,
+#         }
 
     # use the first non-zero apy, ordered by precedence
     apys = [now_apy, week_ago_apy, month_ago_apy, inception_apy]
@@ -293,4 +293,4 @@ def average(vault, samples: ApySamples) -> Apy:
     points = ApyPoints(now_apy, week_ago_apy, month_ago_apy, inception_apy)
     fees = ApyFees(performance=performance, management=management, keep_crv=keep_crv)
     
-    return Apy("v2:aggregate", gross_apr, net_apy, fees, points=points, composite=composite)
+    return Apy("v2:aggregate", gross_apr, net_apy, fees, points=points)

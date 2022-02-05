@@ -7,6 +7,11 @@ from yearn.apy.common import StrategyApy, ApyFees
 from brownie import Contract, chain
 from eth_utils import encode_hex, event_abi_to_log_topic
 
+from yearn.prices.curve import curve
+from yearn.networks import Network
+from yearn.apy.curve.strategy import curve_strategy as strategy_curve
+from yearn.prices.curve import curve
+
 from yearn.utils import safe_views, contract
 from yearn.multicall2 import fetch_multicall
 from yearn.events import create_filter, decode_logs
@@ -117,6 +122,10 @@ class Strategy:
 
     @property
     def apy(self) -> StrategyApy:
+        # use forward-looking data for curve and convex
+        if curve and curve.get_pool(self.strategy.want()):
+            return strategy_curve(self)
+
         harvests = self.harvests_data
 
         # Find at least two profitable harvests

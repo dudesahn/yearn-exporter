@@ -8,16 +8,17 @@ from brownie import ZERO_ADDRESS, Contract, chain
 from eth_utils import encode_hex, event_abi_to_log_topic
 from joblib import Parallel, delayed
 from semantic_version.base import Version
-from yearn import apy
-from yearn.apy.common import ApySamples
 from yearn.common import Tvl
 from yearn.events import create_filter, decode_logs
 from yearn.multicall2 import fetch_multicall
 from yearn.prices import magic
 from yearn.prices.curve import curve
 from yearn.utils import safe_views, contract
-from yearn.v2.strategies import Strategy
 from yearn.exceptions import PriceError
+
+from yearn.apy.common import ApySamples
+from yearn.v2.strategies import Strategy
+from yearn.apy import v2 as historical_vault_apy
 
 VAULT_VIEWS_SCALED = [
     "totalAssets",
@@ -190,9 +191,9 @@ class Vault:
 
     def apy(self, samples: ApySamples):
         if Version(self.api_version) >= Version("0.3.2"):
-            return apy.v2.average(self, samples)
+            return historical_vault_apy.average(self, samples)
         else:
-            return apy.v2.simple(self, samples)
+            return historical_vault_apy.simple(self, samples)
 
     def tvl(self, block=None):
         total_assets = self.vault.totalAssets(block_identifier=block)

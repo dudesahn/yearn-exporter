@@ -156,13 +156,13 @@ def curve_strategy(strategy) -> StrategyApy:
     crv_net_farmed_apy = (1 + (crv_net_apr / compounding)) ** compounding - 1
     net_apy = ((1 + crv_net_farmed_apy) * (1 + pool_apy)) - 1
         
-    strategy_composite_curve = {
+    strategy_composite = {
             "boost": boost,
             "pool_apy": pool_apy,
             "base_apr": base_apr,
             "boosted_apr": boosted_apr,
             "rewards_apr": curve_reward_apr,
-            "cvx_apr": float(0),
+            "cvx_apr": 0,
     }
 
     # as long as we have a convex strategy, calculate our convex APY
@@ -232,7 +232,7 @@ def curve_strategy(strategy) -> StrategyApy:
         cvx_net_farmed_apy = (1 + (cvx_net_apr / compounding)) ** compounding - 1
         net_apy = ((1 + cvx_net_farmed_apy) * (1 + pool_apy)) - 1
         
-        strategy_composite_convex = {
+        strategy_composite = {
             "boost": cvx_boost,
             "pool_apy": pool_apy,
             "base_apr": base_apr,
@@ -245,8 +245,9 @@ def curve_strategy(strategy) -> StrategyApy:
         if net_apy < 0 and Version(vault_contract.api_version()) >= Version("0.3.5"):
             net_apy = 0
         
+        fees = ApyFees(performance=performance, management=management, keep_crv=keep_crv)
         print("end of convex")
-        return StrategyApy("convex", gross_apr, net_apy, fees, strategy_composite=strategy_composite_convex)
+        return StrategyApy("convex", gross_apr, net_apy, fees) # strategy_composite=strategy_composite)
         
     else:
         print("not a convex strategy")
@@ -256,4 +257,4 @@ def curve_strategy(strategy) -> StrategyApy:
         net_apy = 0
 
     fees = ApyFees(performance=performance, management=management, keep_crv=keep_crv)
-    return StrategyApy("curve", gross_apr, net_apy, fees, strategy_composite=strategy_composite_curve)
+    return StrategyApy("curve", gross_apr, net_apy, fees) # strategy_composite=strategy_composite)

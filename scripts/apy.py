@@ -115,6 +115,7 @@ def ibeur():
 def apy_testing():
     calculate_apy("0x6d765CbE5bC922694afE112C140b8878b9FB0390")
     calculate_apy("0x2DfB14E32e2F8156ec15a2c21c3A6c053af52Be8")
+    calculate_apy("0x4560b99C904aAD03027B5178CCa81584744AC01f")
 
 
 def ibgbp():
