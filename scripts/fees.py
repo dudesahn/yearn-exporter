@@ -13,7 +13,10 @@ from brownie.exceptions import ContractNotFound
 
 def main():
 
-    from_block = 12059090
+    if chain.id == 1:
+        from_block = 12059090
+    else:
+        from_block = 29419131 # Fantom, block before I got my first rewards
     print(f"Starting from block {from_block}")
 
     dai = contract("0x5f18C75AbDAe578b483E5F43f12a39cF75b973a9")
