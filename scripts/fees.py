@@ -9,7 +9,7 @@ from web3._utils.events import construct_event_topic_set
 from yearn.prices.magic import get_price
 from yearn.utils import contract
 from brownie.exceptions import ContractNotFound
-
+from yearn.events import get_logs_asap_2
 
 def main():
     print("We've started")
@@ -19,8 +19,8 @@ def main():
         dai = web3.eth.contract(str(dai), abi=dai.abi)
     else:
         from_block = 29418132 # Fantom, ~1000 blocks before I got my first rewards
-        from_block = 33506480
-        from_block = 34372031
+        from_block = "33506480"
+        #from_block = 34372031
         dai = contract("0x0DEC85e74A92c52b7F708c4B10207D9560CEFaf0")
         dai = web3.eth.contract(str(dai), abi=dai.abi)
     print(f"Starting from block {from_block}")
@@ -35,10 +35,10 @@ def main():
         web3.codec,
         {'receiver': my_wallets},
     )
-    logs = web3.eth.get_logs(
-        {'topics': topics, 'fromBlock': from_block, 'toBlock': chain.height}
-    )
 
+    logs = get_logs_asap_2(topics, from_block, chain.height, 1)
+
+    print(f"Logs fetched. size = {len(logs)}")
     events = dai.events.Transfer().processReceipt({'logs': logs})
     income_by_month = defaultdict(float)
 
