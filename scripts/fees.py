@@ -20,16 +20,20 @@ def main():
     else:
         from_block = 29418132 # Fantom, ~1000 blocks before I got my first rewards
         from_block = 33506480
-        dai = contract("0xF137D22d7B23eeB1950B3e19d1f578c053ed9715")
+        from_block = 34372031
+        dai = contract("0x0DEC85e74A92c52b7F708c4B10207D9560CEFaf0")
         dai = web3.eth.contract(str(dai), abi=dai.abi)
     print(f"Starting from block {from_block}")
 
     print(f"abi: {dai.events.Transfer().abi}")
+
+    # ADD YOUR ADDRESSES HERE
+    my_wallets = ['0x03ebbFCc5401beef5B4A06c3BfDd26a75cB09A84']
+
     topics = construct_event_topic_set(
         dai.events.Transfer().abi,
         web3.codec,
-        #{'receiver': ['0x98AA6B78ed23f4ce2650DA85604ceD5653129A21', '0xC3D6880fD95E06C816cB030fAc45b3ffe3651Cb0', '0xE7a43665677AcfC6A3B15f00b68119c486EC56A3']},
-        {'receiver': ['0x5C46eee2edFb8a00b1C9269C4365e206F7C9FBdC']},
+        {'receiver': my_wallets},
     )
     logs = web3.eth.get_logs(
         {'topics': topics, 'fromBlock': from_block, 'toBlock': chain.height}
@@ -107,12 +111,15 @@ def main():
                 "0x2361102893CCabFb543bc55AC4cC8d6d0824A67E",
                 "0x49D72e3973900A195A155a46441F0C08179FdB64", # creth2
                 "0x6Bba316c48b49BD1eAc44573c5c871ff02958469", # gas
+                "0x03E173Ad8d1581A4802d3B532AcE27a62c5B81dc", # THALES
+                "0x6810e776880C02933D47DB1b9fc05908e5386b96", # GNO
+                "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2", # SUSHI
+                "0x584bC13c7D411c00c01A62e8019472dE68768430", # Hegic
             ]
             if token in to_skip:
                 print("\nNon-vault token from our list to skip")
                 continue
 
-        print(f"contract {token}")
         token_contract = contract(token)
 
         try:
@@ -125,6 +132,11 @@ def main():
                 "is not a vault token and shouldn't be counted",
             )
         src, dst, amount = event.args.values()
+
+        # Avoid double dipping
+        if src in my_wallets:
+            print(f"Skipping sending form {src} to {dst}")
+            continue
 
         # ignore income from addresses we know weren't fee distros. mainly other transfers and mints.
         addresses_to_ignore = [
