@@ -18,9 +18,8 @@ def main():
         dai = contract("0x5f18C75AbDAe578b483E5F43f12a39cF75b973a9")
         dai = web3.eth.contract(str(dai), abi=dai.abi)
     else:
-        from_block = 29418132 # Fantom, ~1000 blocks before I got my first rewards
-        from_block = "33506480"
-        #from_block = 34372031
+        from_block = 8042204 # 302 days ago
+
         dai = contract("0x0DEC85e74A92c52b7F708c4B10207D9560CEFaf0")
         dai = web3.eth.contract(str(dai), abi=dai.abi)
     print(f"Starting from block {from_block}")
@@ -28,7 +27,7 @@ def main():
     print(f"abi: {dai.events.Transfer().abi}")
 
     # ADD YOUR ADDRESSES HERE
-    my_wallets = ['0x03ebbFCc5401beef5B4A06c3BfDd26a75cB09A84']
+    my_wallets = ['0x03ebbFCc5401beef5B4A06c3BfDd26a75cB09A84', '0x05B7D0dfdD845c58AbC8B78b02859b447b79ed34']
 
     topics = construct_event_topic_set(
         dai.events.Transfer().abi,
@@ -116,6 +115,37 @@ def main():
                 "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2", # SUSHI
                 "0x584bC13c7D411c00c01A62e8019472dE68768430", # Hegic
             ]
+        elif chain.id == 250:
+            to_skip = [
+                # FTM
+                "0x841FAD6EAe12c286d1Fd18d1d525DFfA75C7EFFE", # BOO
+                "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75", # USDC
+                "0x328A7b4d538A2b3942653a9983fdA3C12c571141", # iUSDC
+                "0xD0660cD418a64a1d44E9214ad8e459324D8157f1", # WOOFY
+                "0x049d68029688eAbF473097a2fC38ef61633A3C7A", # fusdt
+                "0xf16e81dce15B08F326220742020379B855B87DF9", # ice
+                "0x92D5ebF3593a92888C25C0AbEF126583d4b5312E", # fusdt+dai+usdc
+                "0x4f3E8F405CF5aFC05D68142F3783bDfE13811522", # fusdt+dai+usdc gauge
+                "0x1E4F97b9f9F913c46F1632781732927B9019C68b", # crv
+                "0x8D11eC38a3EB5E956B052f67Da8Bdc9bef8Abf3E", # dai
+                "0x27E611FD27b276ACbd5Ffd632E5eAEBEC9761E40", # dai-usdc
+                "0x8866414733F22295b7563f9C5299715D2D76CAf4", # dai-usdc gauge
+                "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83", # wftm
+                "0x2F96f61a027B5101E966EC1bA75B78f353259Fb3", # TNGLv3
+                "0x82f0B8B456c1A451378467398982d4834b6829c1", # mim
+                "0x2dd7C9371965472E5A5fD28fbE165007c61439E1", # 3poolv2-f
+                "0x5Cc61A78F164885776AA610fb0FE1257df78E59B", # spirit
+                "0xD02a30d33153877BC20e5721ee53DeDEE0422B2F", # g3crv
+                "0xd4F94D0aaa640BBb72b5EEc2D85F6D114D81a88E", # g3crv gauge
+                "0xd8321AA83Fb0a4ECd6348D4577431310A6E0814d", # geist
+                "0x87e377820010D818aA316F8C3F1C2B9d025eb5eE", # spam
+                "0x06e3C4da96fd076b97b7ca3Ae23527314b6140dF", # fUSDT+DAI+USDC-gauge
+                "0x95bf7E307BC1ab0BA38ae10fc27084bC36FcD605", # anyUSDC
+                "0x2823D10DA533d9Ee873FEd7B16f4A962B2B7f181", # anyUSDT
+            ]
+
+
+
             if token in to_skip:
                 print("\nNon-vault token from our list to skip")
                 continue
