@@ -173,6 +173,7 @@ def main():
             "0x677Ae1C4FDa1A986a23a055Bbd0A94f8e5b284De",  # deposited test to ib vault here, then sent over
             "0x0000000000000000000000000000000000000000",  # burn/mint address
             "0x25B28EE7f335F0396f41f129039F1583345B21b8",  # dudesahn.eth
+            "0xF5BCE5077908a1b7370B9ae04AdC565EBd643966",  # bentobox FTM
         ]
         if src in addresses_to_ignore:
             print("\nNot a fee distro, skip")
