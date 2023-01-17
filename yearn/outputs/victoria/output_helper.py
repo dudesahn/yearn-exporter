@@ -12,22 +12,42 @@ mapping = {
     "earn": {
         "metric": "iearn",
         "labels": ["vault", "param", "address", "version"],
-        "agg_stats": ["total wallets","active wallets","wallets > $5k","wallets > $50k"]
+        "agg_stats": [
+            "total wallets",
+            "active wallets",
+            "wallets > $5k",
+            "wallets > $50k",
+        ],
     },
     "ib": {
         "metric": "ironbank",
         "labels": ["vault", "param", "address", "version"],
-        "agg_stats": ["total wallets","active wallets","wallets > $5k","wallets > $50k"]
+        "agg_stats": [
+            "total wallets",
+            "active wallets",
+            "wallets > $5k",
+            "wallets > $50k",
+        ],
     },
     "v1": {
         "metric": "yearn",
         "labels": ["vault", "param", "address", "version"],
-        "agg_stats": ["total wallets","active wallets","wallets > $5k","wallets > $50k"]
+        "agg_stats": [
+            "total wallets",
+            "active wallets",
+            "wallets > $5k",
+            "wallets > $50k",
+        ],
     },
     "v2": {
         "metric": "yearn_vault",
         "labels": ["vault", "param", "address", "version", "experimental"],
-        "agg_stats": ["total wallets","active wallets","wallets > $5k","wallets > $50k"]
+        "agg_stats": [
+            "total wallets",
+            "active wallets",
+            "wallets > $5k",
+            "wallets > $50k",
+        ],
     },
     "v2_strategy": {
         "metric": "yearn_strategy",
@@ -36,9 +56,15 @@ mapping = {
     "special": {
         "metric": "yearn_vault",
         "labels": ["vault", "param", "address", "version", "experimental"],
-        "agg_stats": ["total wallets","active wallets","wallets > $5k","wallets > $50k"]
-    }
+        "agg_stats": [
+            "total wallets",
+            "active wallets",
+            "wallets > $5k",
+            "wallets > $50k",
+        ],
+    },
 }
+
 
 def _build_item(metric, label_names, label_values, value, timestamp):
     ts_millis = math.floor(timestamp) * 1000
@@ -62,16 +88,9 @@ def _post(metrics_to_export: List[Dict]):
     data = _to_jsonl_gz(metrics_to_export)
     base_url = os.environ.get('VM_URL', 'http://victoria-metrics:8428')
     url = f'{base_url}/api/v1/import'
-    headers = {
-        'Connection': 'close',
-        'Content-Encoding': 'gzip'
-    }
+    headers = {'Connection': 'close', 'Content-Encoding': 'gzip'}
     with requests.Session() as session:
-        session.post(
-            url = url,
-            data = data,
-            headers = headers
-        )
+        session.post(url=url, data=data, headers=headers)
 
 
 def _sanitize(value):
@@ -79,7 +98,7 @@ def _sanitize(value):
         return int(value)
     elif isinstance(value, str):
         return value.replace('"', '')  # e.g. '"yvrenBTC" 0.3.5 0x340832'
-    
+
     return value
 
 
@@ -95,7 +114,7 @@ def _flatten_dict(d):
     return dict(items())
 
 
-def _get_label_values(params, inital_labels, experimental = False):
+def _get_label_values(params, inital_labels, experimental=False):
     address = _get_string_label(params, "address")
     version = _get_string_label(params, "version")
     label_values = inital_labels + [address, version]

@@ -5,7 +5,7 @@ from yearn.partners.snapshot import BentoboxWrapper
 from yearn.utils import contract
 from yearn.v2.registry import Registry
 
-sentry_sdk.set_tag('script','abracadabra_wrappers')
+sentry_sdk.set_tag('script', 'abracadabra_wrappers')
 
 # https://docs.abracadabra.money/our-ecosystem/our-cauldrons-contract
 CAULDRONS = [

@@ -45,9 +45,15 @@ class Registry:
     def describe(self, block=None) -> dict:
         vaults = self.active_vaults_at(block)
         contracts = [vault.vault for vault in vaults]
-        results = multicall_matrix(contracts, ["totalSupply", "pool", "getPricePerFullShare", "balance"], block=block)
+        results = multicall_matrix(
+            contracts,
+            ["totalSupply", "pool", "getPricePerFullShare", "balance"],
+            block=block,
+        )
         output = defaultdict(dict)
-        prices = Parallel(8, "threading")(delayed(magic.get_price)(vault.token, block=block) for vault in vaults)
+        prices = Parallel(8, "threading")(
+            delayed(magic.get_price)(vault.token, block=block) for vault in vaults
+        )
         for vault, price in zip(vaults, prices):
             res = results[vault.vault]
             if res['getPricePerFullShare'] is None:
@@ -68,11 +74,22 @@ class Registry:
 
     def total_value_at(self, block=None):
         vaults = self.active_vaults_at(block)
-        prices = Parallel(8, "threading")(delayed(magic.get_price)(vault.token, block=block) for vault in vaults)
-        results = fetch_multicall(*[[vault.vault, "pool"] for vault in vaults], block=block)
-        return {vault.name: assets * price / vault.scale for vault, assets, price in zip(vaults, results, prices)}
+        prices = Parallel(8, "threading")(
+            delayed(magic.get_price)(vault.token, block=block) for vault in vaults
+        )
+        results = fetch_multicall(
+            *[[vault.vault, "pool"] for vault in vaults], block=block
+        )
+        return {
+            vault.name: assets * price / vault.scale
+            for vault, assets, price in zip(vaults, results, prices)
+        }
 
     def active_vaults_at(self, block=None):
         if block is None:
             return self.vaults
-        return [vault for vault in self.vaults if contract_creation_block(str(vault.vault)) < block]
+        return [
+            vault
+            for vault in self.vaults
+            if contract_creation_block(str(vault.vault)) < block
+        ]

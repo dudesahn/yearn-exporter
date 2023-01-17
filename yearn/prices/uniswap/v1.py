@@ -10,11 +10,12 @@ addresses = {
     Network.Mainnet: '0xc0a47dFe034B400B47bDaD5FecDa2621de6c4d95',
 }
 
+
 class UniswapV1(metaclass=Singleton):
     def __init__(self):
         if chain.id not in addresses:
             raise UnsupportedNetwork('uniswap v1 is not supported on this network')
-        
+
         self.factory = contract(addresses[chain.id])
 
     def __contains__(self, asset):
@@ -25,10 +26,15 @@ class UniswapV1(metaclass=Singleton):
         try:
             asset = contract(asset)
             exchange = interface.UniswapV1Exchange(self.factory.getExchange(asset))
-            eth_bought = exchange.getTokenToEthInputPrice(10 ** asset.decimals(), block_identifier=block)
+            eth_bought = exchange.getTokenToEthInputPrice(
+                10 ** asset.decimals(), block_identifier=block
+            )
             exchange = interface.UniswapV1Exchange(self.factory.getExchange(usdc))
-            usdc_bought = exchange.getEthToTokenInputPrice(eth_bought, block_identifier=block) / 1e6
-            fees = 0.997 ** 2
+            usdc_bought = (
+                exchange.getEthToTokenInputPrice(eth_bought, block_identifier=block)
+                / 1e6
+            )
+            fees = 0.997**2
             return usdc_bought / fees
         except (ContractNotFound, ValueError) as e:
             pass

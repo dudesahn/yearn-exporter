@@ -11,7 +11,9 @@ GRAFANA_URL = os.environ.get("GRAFANA_URL")
 GRAFANA_API_KEY = os.environ.get("GRAFANA_API_KEY")
 
 
-def send_metric(metric_name: str, value: float, time: datetime, tags=None, resolution: int = 10):
+def send_metric(
+    metric_name: str, value: float, time: datetime, tags=None, resolution: int = 10
+):
     if GRAFANA_URL is None or GRAFANA_API_KEY is None:
         return
 
@@ -37,6 +39,8 @@ def send_metric(metric_name: str, value: float, time: datetime, tags=None, resol
 
     result = requests.post(GRAFANA_URL, json=[grafana_data], headers=headers)
     if result.status_code != 200:
-        logger.error(f"Failed to send metric {metric_name} with value {value}: {result.text}")
+        logger.error(
+            f"Failed to send metric {metric_name} with value {value}: {result.text}"
+        )
 
     logger.debug('%s: %s' % (result.status_code, result.text))

@@ -9,9 +9,10 @@ from yearn.networks import Network
 from yearn.utils import closest_block_after_timestamp
 from yearn.yearn import Yearn
 
-sentry_sdk.set_tag('script','historical_exporter')
+sentry_sdk.set_tag('script', 'historical_exporter')
 
 logger = logging.getLogger('yearn.historical_exporter')
+
 
 def main():
     start = datetime.now(tz=timezone.utc)
@@ -25,13 +26,7 @@ def main():
         end = datetime(2020, 2, 12, 0, 1, tzinfo=timezone.utc)
         data_query = 'iearn{network="ETH"}'
 
-    export_historical(
-        start,
-        end,
-        export_chunk,
-        export_snapshot,
-        data_query
-    )
+    export_historical(start, end, export_chunk, export_snapshot, data_query)
 
 
 def export_chunk(chunk, export_snapshot_func):
@@ -43,9 +38,10 @@ def export_chunk(chunk, export_snapshot_func):
                 'yearn': yearn,
                 'snapshot': snapshot,
                 'ts': ts,
-                'exporter_name': 'historical'
+                'exporter_name': 'historical',
             }
         )
+
 
 @time_tracking
 def export_snapshot(yearn, snapshot, ts, exporter_name):

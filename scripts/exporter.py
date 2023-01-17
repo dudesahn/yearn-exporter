@@ -8,10 +8,11 @@ from yearn.outputs.victoria import output_duration
 from yearn.prices import constants
 from yearn.yearn import Yearn
 
-sentry_sdk.set_tag('script','exporter')
+sentry_sdk.set_tag('script', 'exporter')
 
 logger = logging.getLogger('yearn.exporter')
 sleep_interval = int(os.environ.get('SLEEP_SECONDS', '0'))
+
 
 def main():
     yearn = Yearn()
@@ -31,7 +32,11 @@ def tvl():
         if yearn.exclude_ib_tvl and block > constants.ib_snapshot_block:
             products.remove('ib')
 
-        total = sum(sum(vaults.values()) for (product, vaults) in data.items() if product in products)
+        total = sum(
+            sum(vaults.values())
+            for (product, vaults) in data.items()
+            if product in products
+        )
         print(f"block={block.number} tvl={total}")
         logger.info('exported block=%d tvl=%.0f', block.number, total)
         time.sleep(sleep_interval)

@@ -3,8 +3,15 @@ from time import time
 
 from brownie import ZERO_ADDRESS, chain, interface
 from semantic_version import Version
-from yearn.apy.common import (SECONDS_PER_YEAR, Apy, ApyError, ApyFees,
-                              ApySamples, SharePricePoint, calculate_roi)
+from yearn.apy.common import (
+    SECONDS_PER_YEAR,
+    Apy,
+    ApyError,
+    ApyFees,
+    ApySamples,
+    SharePricePoint,
+    calculate_roi,
+)
 from yearn.apy.curve.rewards import rewards
 from yearn.networks import Network
 from yearn.prices import magic
@@ -49,7 +56,9 @@ def simple(vault, samples: ApySamples) -> Apy:
         controller = curve.gauge_controller
 
     block = samples.now
-    gauge_weight = controller.gauge_relative_weight.call(gauge_address, block_identifier=block) 
+    gauge_weight = controller.gauge_relative_weight.call(
+        gauge_address, block_identifier=block
+    )
     gauge_working_supply = gauge.working_supply(block_identifier=block)
     if gauge_working_supply == 0:
         raise ApyError("crv", "gauge working supply is zero")
@@ -88,8 +97,12 @@ def simple(vault, samples: ApySamples) -> Apy:
     if hasattr(gauge, "reward_contract"):
         reward_address = gauge.reward_contract()
         if reward_address != ZERO_ADDRESS:
-            reward_apr = rewards(reward_address, pool_price, base_asset_price, block=block)
-    elif hasattr(gauge, "reward_data"): # this is how new gauges, starting with MIM, show rewards
+            reward_apr = rewards(
+                reward_address, pool_price, base_asset_price, block=block
+            )
+    elif hasattr(
+        gauge, "reward_data"
+    ):  # this is how new gauges, starting with MIM, show rewards
         # get our token
         # TODO: consider adding for loop with [gauge.reward_tokens(i) for i in range(gauge.reward_count())] for multiple rewards tokens
         gauge_reward_token = gauge.reward_tokens(0)
@@ -104,14 +117,20 @@ def simple(vault, samples: ApySamples) -> Apy:
             if gauge_reward_token == addresses[chain.id]['rkp3r_rewards']:
                 rKP3R_contract = interface.rKP3R(gauge_reward_token)
                 discount = rKP3R_contract.discount(block_identifier=block)
-                token_price = magic.get_price(addresses[chain.id]['kp3r'], block=block) * (100 - discount) / 100
+                token_price = (
+                    magic.get_price(addresses[chain.id]['kp3r'], block=block)
+                    * (100 - discount)
+                    / 100
+                )
             else:
                 token_price = magic.get_price(gauge_reward_token, block=block)
             current_time = time() if block is None else get_block_timestamp(block)
             if period_finish < current_time:
                 reward_apr = 0
             else:
-                reward_apr = (SECONDS_PER_YEAR * (rate / 1e18) * token_price) / ((pool_price / 1e18) * (total_supply / 1e18) * base_asset_price)
+                reward_apr = (SECONDS_PER_YEAR * (rate / 1e18) * token_price) / (
+                    (pool_price / 1e18) * (total_supply / 1e18) * base_asset_price
+                )
     else:
         reward_apr = 0
 
@@ -137,20 +156,53 @@ def simple(vault, samples: ApySamples) -> Apy:
 
     if isinstance(vault, VaultV2):
         vault_contract = vault.vault
-        if len(vault.strategies) > 0 and hasattr(vault.strategies[0].strategy, "keepCRV"):
-            crv_keep_crv = vault.strategies[0].strategy.keepCRV(block_identifier=block) / 1e4
-        elif len(vault.strategies) > 0 and hasattr(vault.strategies[0].strategy, "keepCrvPercent"):
-            crv_keep_crv = vault.strategies[0].strategy.keepCrvPercent(block_identifier=block) / 1e4
+        if len(vault.strategies) > 0 and hasattr(
+            vault.strategies[0].strategy, "keepCRV"
+        ):
+            crv_keep_crv = (
+                vault.strategies[0].strategy.keepCRV(block_identifier=block) / 1e4
+            )
+        elif len(vault.strategies) > 0 and hasattr(
+            vault.strategies[0].strategy, "keepCrvPercent"
+        ):
+            crv_keep_crv = (
+                vault.strategies[0].strategy.keepCrvPercent(block_identifier=block)
+                / 1e4
+            )
         else:
             crv_keep_crv = 0
-        performance = (vault_contract.performanceFee(block_identifier=block) * 2) / 1e4 if hasattr(vault_contract, "performanceFee") else 0
-        management = vault_contract.managementFee(block_identifier=block) / 1e4 if hasattr(vault_contract, "managementFee") else 0
+        performance = (
+            (vault_contract.performanceFee(block_identifier=block) * 2) / 1e4
+            if hasattr(vault_contract, "performanceFee")
+            else 0
+        )
+        management = (
+            vault_contract.managementFee(block_identifier=block) / 1e4
+            if hasattr(vault_contract, "managementFee")
+            else 0
+        )
     else:
         strategy = vault.strategy
-        strategist_performance = strategy.performanceFee(block_identifier=block) if hasattr(strategy, "performanceFee") else 0
-        strategist_reward = strategy.strategistReward(block_identifier=block) if hasattr(strategy, "strategistReward") else 0
-        treasury = strategy.treasuryFee(block_identifier=block) if hasattr(strategy, "treasuryFee") else 0
-        crv_keep_crv = strategy.keepCRV(block_identifier=block) / 1e4 if hasattr(strategy, "keepCRV") else 0
+        strategist_performance = (
+            strategy.performanceFee(block_identifier=block)
+            if hasattr(strategy, "performanceFee")
+            else 0
+        )
+        strategist_reward = (
+            strategy.strategistReward(block_identifier=block)
+            if hasattr(strategy, "strategistReward")
+            else 0
+        )
+        treasury = (
+            strategy.treasuryFee(block_identifier=block)
+            if hasattr(strategy, "treasuryFee")
+            else 0
+        )
+        crv_keep_crv = (
+            strategy.keepCRV(block_identifier=block) / 1e4
+            if hasattr(strategy, "keepCRV")
+            else 0
+        )
 
         performance = (strategist_reward + strategist_performance + treasury) / 1e4
         management = 0
@@ -159,23 +211,27 @@ def simple(vault, samples: ApySamples) -> Apy:
         crv_strategy = vault.strategies[0].strategy
         cvx_strategy = vault.strategies[1].strategy
         convex_voter = addresses[chain.id]['convex_voter_proxy']
-        cvx_working_balance = gauge.working_balances(convex_voter, block_identifier=block)
+        cvx_working_balance = gauge.working_balances(
+            convex_voter, block_identifier=block
+        )
         cvx_gauge_balance = gauge.balanceOf(convex_voter, block_identifier=block)
 
         if cvx_gauge_balance > 0:
             cvx_boost = cvx_working_balance / (PER_MAX_BOOST * cvx_gauge_balance) or 1
         else:
             cvx_boost = MAX_BOOST
-        
+
         cvx_booster = contract(addresses[chain.id]['convex_booster'])
         cvx_lock_incentive = cvx_booster.lockIncentive(block_identifier=block)
         cvx_staker_incentive = cvx_booster.stakerIncentive(block_identifier=block)
         cvx_earmark_incentive = cvx_booster.earmarkIncentive(block_identifier=block)
-        cvx_fee = (cvx_lock_incentive + cvx_staker_incentive + cvx_earmark_incentive) / 1e4
+        cvx_fee = (
+            cvx_lock_incentive + cvx_staker_incentive + cvx_earmark_incentive
+        ) / 1e4
         cvx_keep_crv = cvx_strategy.keepCRV(block_identifier=block) / 1e4
 
         total_cliff = 1e3
-        max_supply = 1e2 * 1e6 * 1e18 # ?
+        max_supply = 1e2 * 1e6 * 1e18  # ?
         reduction_per_cliff = 1e23
         cvx = contract(addresses[chain.id]['cvx'])
         supply = cvx.totalSupply(block_identifier=block)
@@ -189,9 +245,13 @@ def simple(vault, samples: ApySamples) -> Apy:
         else:
             cvx_printed_as_crv = 0
 
-        cvx_apr = ((1 - cvx_fee) * cvx_boost * base_apr) * (1 + cvx_printed_as_crv) + reward_apr
-        cvx_apr_minus_keep_crv = ((1 - cvx_fee) * cvx_boost * base_apr) * ((1 - cvx_keep_crv) + cvx_printed_as_crv)
-        
+        cvx_apr = ((1 - cvx_fee) * cvx_boost * base_apr) * (
+            1 + cvx_printed_as_crv
+        ) + reward_apr
+        cvx_apr_minus_keep_crv = ((1 - cvx_fee) * cvx_boost * base_apr) * (
+            (1 - cvx_keep_crv) + cvx_printed_as_crv
+        )
+
         crv_debt_ratio = vault.vault.strategies(crv_strategy)[2] / 1e4
         cvx_debt_ratio = vault.vault.strategies(cvx_strategy)[2] / 1e4
     else:
@@ -204,7 +264,9 @@ def simple(vault, samples: ApySamples) -> Apy:
     crv_apr = base_apr * boost + reward_apr
     crv_apr_minus_keep_crv = base_apr * boost * (1 - crv_keep_crv)
 
-    gross_apr = (1 + (crv_apr * crv_debt_ratio + cvx_apr * cvx_debt_ratio)) * (1 + pool_apy) - 1
+    gross_apr = (1 + (crv_apr * crv_debt_ratio + cvx_apr * cvx_debt_ratio)) * (
+        1 + pool_apy
+    ) - 1
 
     cvx_net_apr = (cvx_apr_minus_keep_crv + reward_apr) * (1 - performance) - management
     cvx_net_farmed_apy = (1 + (cvx_net_apr / COMPOUNDING)) ** COMPOUNDING - 1
@@ -217,10 +279,19 @@ def simple(vault, samples: ApySamples) -> Apy:
     net_apy = crv_net_apy * crv_debt_ratio + cvx_net_apy * cvx_debt_ratio
 
     # 0.3.5+ should never be < 0% because of management
-    if isinstance(vault, VaultV2) and net_apy < 0 and Version(vault.api_version) >= Version("0.3.5"):
+    if (
+        isinstance(vault, VaultV2)
+        and net_apy < 0
+        and Version(vault.api_version) >= Version("0.3.5")
+    ):
         net_apy = 0
 
-    fees = ApyFees(performance=performance, management=management, keep_crv=crv_keep_crv, cvx_keep_crv=cvx_keep_crv)
+    fees = ApyFees(
+        performance=performance,
+        management=management,
+        keep_crv=crv_keep_crv,
+        cvx_keep_crv=cvx_keep_crv,
+    )
     composite = {
         "boost": boost,
         "pool_apy": pool_apy,

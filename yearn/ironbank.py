@@ -101,16 +101,18 @@ class Registry:
         output = defaultdict(dict)
         for m, price in zip(markets, prices):
             res = results[m.vault]
-            exchange_rate = res["exchangeRateCurrent"] * 10 ** (m.cdecimals - m.decimals - 18)
+            exchange_rate = res["exchangeRateCurrent"] * 10 ** (
+                m.cdecimals - m.decimals - 18
+            )
             for attr in ["getCash", "totalBorrows", "totalReserves"]:
-                res[attr] /= 10 ** m.decimals
+                res[attr] /= 10**m.decimals
 
             tvl = (res["getCash"] + res["totalBorrows"] - res["totalReserves"]) * price
             supplied = res["getCash"] + res["totalBorrows"] - res["totalReserves"]
             ratio = res["totalBorrows"] / supplied if supplied != 0 else None
 
             output[m.name] = {
-                "total supply": res["totalSupply"] / 10 ** m.cdecimals,
+                "total supply": res["totalSupply"] / 10**m.cdecimals,
                 "total cash": res["getCash"],
                 "total supplied": supplied,
                 "total borrows": res["totalBorrows"],
@@ -142,7 +144,7 @@ class Registry:
         results = [data[market.vault] for market in markets]
         return {
             # market.name: (res["getCash"] + res["totalBorrows"] - res["totalReserves"]) / 10 ** market.decimals * price
-            market.name: res["totalSupply"] / 10 ** market.cdecimals * price
+            market.name: res["totalSupply"] / 10**market.cdecimals * price
             for market, price, res in zip(markets, prices, results)
         }
 
@@ -151,7 +153,13 @@ class Registry:
             return self.vaults
 
         try:
-            active_markets_at_block = self.ironbank.getAllMarkets(block_identifier=block)
-            return [market for market in self.vaults if market.vault in active_markets_at_block]
+            active_markets_at_block = self.ironbank.getAllMarkets(
+                block_identifier=block
+            )
+            return [
+                market
+                for market in self.vaults
+                if market.vault in active_markets_at_block
+            ]
         except ValueError:
             return []

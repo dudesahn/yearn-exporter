@@ -54,7 +54,7 @@ stablecoins_by_network = {
         "0x82f0B8B456c1A451378467398982d4834b6829c1": "mim",
         "0x049d68029688eAbF473097a2fC38ef61633A3C7A": "fusdt",
         "0xdc301622e621166BD8E82f2cA0A26c13Ad0BE355": "frax",
-        "0x95bf7E307BC1ab0BA38ae10fc27084bC36FcD605": "anyusdc"
+        "0x95bf7E307BC1ab0BA38ae10fc27084bC36FcD605": "anyusdc",
     },
     Network.Arbitrum: {
         '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8': 'usdc',
@@ -65,7 +65,7 @@ stablecoins_by_network = {
 ib_snapshot_block_by_network = {
     Network.Mainnet: 14051986,
     Network.Fantom: 28680044,
-    Network.Arbitrum: 1
+    Network.Arbitrum: 1,
 }
 
 weth = tokens_by_network[chain.id]['weth']

@@ -13,12 +13,11 @@ from web3._utils.events import construct_event_topic_set
 from yearn.entities import UserTx  # , TreasuryTx
 from yearn.events import decode_logs, get_logs_asap
 from yearn.networks import Network
-from yearn.outputs.postgres.utils import (cache_address, cache_token,
-                                          last_recorded_block)
+from yearn.outputs.postgres.utils import cache_address, cache_token, last_recorded_block
 from yearn.prices import magic
 from yearn.yearn import Yearn
 
-sentry_sdk.set_tag('script','transactions_exporter')
+sentry_sdk.set_tag('script', 'transactions_exporter')
 
 warnings.simplefilter("ignore", BrownieEnvironmentWarning)
 
@@ -32,8 +31,8 @@ BATCH_SIZE = {
 }[chain.id]
 
 FIRST_END_BLOCK = {
-    Network.Mainnet: 9480000, # NOTE block some arbitrary time after iearn's first deployment
-    Network.Fantom: 5000000, # NOTE block some arbitrary time after v2's first deployment
+    Network.Mainnet: 9480000,  # NOTE block some arbitrary time after iearn's first deployment
+    Network.Fantom: 5000000,  # NOTE block some arbitrary time after v2's first deployment
 }[chain.id]
 
 
@@ -41,8 +40,14 @@ def main():
     _cached_thru_from_last_run = None
     while True:
         cached_thru = last_recorded_block(UserTx)
-        if cached_thru and cached_thru == _cached_thru_from_last_run and cached_thru <= chain.height - BATCH_SIZE:
-            logger.critical(f'stuck in infinite loop, increase transactions exporter batch size for {Network(chain.id).name}')
+        if (
+            cached_thru
+            and cached_thru == _cached_thru_from_last_run
+            and cached_thru <= chain.height - BATCH_SIZE
+        ):
+            logger.critical(
+                f'stuck in infinite loop, increase transactions exporter batch size for {Network(chain.id).name}'
+            )
         process_and_cache_user_txs(cached_thru)
         _cached_thru_from_last_run = cached_thru
         time.sleep(1)
@@ -54,8 +59,10 @@ def process_and_cache_user_txs(last_saved_block=None):
     max_block_to_cache = chain.height - 50
     start_block = last_saved_block + 1 if last_saved_block else None
     end_block = (
-        FIRST_END_BLOCK if start_block is None
-        else start_block + BATCH_SIZE if start_block + BATCH_SIZE < max_block_to_cache
+        FIRST_END_BLOCK
+        if start_block is None
+        else start_block + BATCH_SIZE
+        if start_block + BATCH_SIZE < max_block_to_cache
         else max_block_to_cache
     )
     if start_block and start_block > end_block:
@@ -66,12 +73,18 @@ def process_and_cache_user_txs(last_saved_block=None):
     if len(df):
         # NOTE: We want to insert txs in the order they took place, so wallet exporter
         #       won't have issues in the event that transactions exporter fails mid-run.
-        df = df.sort_values('block')  
+        df = df.sort_values('block')
         for index, row in df.iterrows():
             # this addresses one tx with a crazy price due to yvpbtc v1 pricePerFullShare bug.
-            price = row.price if len(str(round(row.price))) <= 20 else 99999999999999999999
-            usd = row.value_usd if len(str(round(row.value_usd))) <= 20 else 99999999999999999999
-            
+            price = (
+                row.price if len(str(round(row.price))) <= 20 else 99999999999999999999
+            )
+            usd = (
+                row.value_usd
+                if len(str(round(row.value_usd))) <= 20
+                else 99999999999999999999
+            )
+
             UserTx(
                 vault=cache_token(row.token),
                 timestamp=row.timestamp,
@@ -81,16 +94,20 @@ def process_and_cache_user_txs(last_saved_block=None):
                 type=row.type,
                 from_address=row['from'],
                 to_address=row['to'],
-                amount = row.amount,
-                price = price,
-                value_usd = usd,
-                gas_used = row.gas_used,
-                gas_price = row.gas_price
-                )
+                amount=row.amount,
+                price=price,
+                value_usd=usd,
+                gas_used=row.gas_used,
+                gas_price=row.gas_price,
+            )
         if start_block == end_block:
-            logger.info(f'{len(df)} user txs exported to postrges [block {start_block}]')
+            logger.info(
+                f'{len(df)} user txs exported to postrges [block {start_block}]'
+            )
         else:
-            logger.info(f'{len(df)} user txs exported to postrges [blocks {start_block}-{end_block}]')
+            logger.info(
+                f'{len(df)} user txs exported to postrges [blocks {start_block}-{end_block}]'
+            )
 
 
 # Helper functions
@@ -101,9 +118,16 @@ def get_token_transfers(token, start_block, end_block) -> pd.DataFrame:
     )
     token_entity = cache_token(token.address)
     events = decode_logs(
-        get_logs_asap(topics=topics, addresses=[token.address], from_block=start_block, to_block=end_block)
+        get_logs_asap(
+            topics=topics,
+            addresses=[token.address],
+            from_block=start_block,
+            to_block=end_block,
+        )
     )
-    return pd.DataFrame([_process_transfer_event(event, token_entity) for event in events])
+    return pd.DataFrame(
+        [_process_transfer_event(event, token_entity) for event in events]
+    )
 
 
 def _process_transfer_event(event, token_entity) -> dict:
@@ -128,18 +152,24 @@ def _process_transfer_event(event, token_entity) -> dict:
         'type': _event_type(sender, receiver, token_entity.address.address),
         'from': sender,
         'to': receiver,
-        'amount': Decimal(amount) / Decimal(10 ** token_entity.decimals),
+        'amount': Decimal(amount) / Decimal(10**token_entity.decimals),
         'price': price,
-        'value_usd': Decimal(amount) / Decimal(10 ** token_entity.decimals) * Decimal(price),
+        'value_usd': Decimal(amount)
+        / Decimal(10**token_entity.decimals)
+        * Decimal(price),
         'gas_used': web3.eth.getTransactionReceipt(txhash).gasUsed,
-        'gas_price': web3.eth.getTransaction(txhash).gasPrice
+        'gas_price': web3.eth.getTransaction(txhash).gasPrice,
     }
 
 
 def _get_price_from_event(event, token_entity):
     while True:
         try:
-            return magic.get_price(token_entity.address.address, event.block_number, return_price_during_vault_downtime=True)
+            return magic.get_price(
+                token_entity.address.address,
+                event.block_number,
+                return_price_during_vault_downtime=True,
+            )
         except ConnectionError as e:
             # Try again
             logger.warn(f'ConnectionError: {str(e)}')

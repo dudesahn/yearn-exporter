@@ -4,8 +4,7 @@ from itertools import zip_longest
 from typing import Dict, List, Optional
 
 from brownie import chain, web3
-from brownie.network.event import (EventDict, _add_deployment_topics,
-                                   _decode_logs)
+from brownie.network.event import EventDict, _add_deployment_topics, _decode_logs
 from joblib import Parallel, delayed
 from toolz import groupby
 from web3.middleware.filter import block_ranges
@@ -44,7 +43,9 @@ def create_filter(address: Address, topics: Optional[Topics] = None) -> RPCEndpo
     else:
         start_block = contract_creation_block(address)
 
-    return web3.eth.filter({"address": address, "fromBlock": start_block, "topics": topics})
+    return web3.eth.filter(
+        {"address": address, "fromBlock": start_block, "topics": topics}
+    )
 
 
 def __add_deployment_topics(address: Address) -> None:
@@ -56,14 +57,16 @@ def get_logs_asap(
     addresses: Optional[List[Address]] = None,
     from_block: Optional[Block] = None,
     to_block: Optional[Block] = None,
-    verbose: int = 0
-    ) -> List[LogReceipt]:
+    verbose: int = 0,
+) -> List[LogReceipt]:
 
     logs = []
 
     if from_block is None:
         if addresses:
-            from_block = min(map(lambda address: contract_creation_block(address), addresses))
+            from_block = min(
+                map(lambda address: contract_creation_block(address), addresses)
+            )
         else:
             from_block = 0
 
@@ -84,7 +87,9 @@ def get_logs_asap(
     return logs
 
 
-def logs_to_balance_checkpoints(logs: List[LogReceipt]) -> Dict[Address,Dict[Block,int]]:
+def logs_to_balance_checkpoints(
+    logs: List[LogReceipt],
+) -> Dict[Address, Dict[Block, int]]:
     """
     Convert Transfer logs to `{address: {from_block: balance}}` checkpoints.
     """
@@ -94,7 +99,11 @@ def logs_to_balance_checkpoints(logs: List[LogReceipt]) -> Dict[Address,Dict[Blo
         events = decode_logs(block_logs)
         for log in events:
             # ZERO_ADDRESS tracks -totalSupply
-            sender, receiver, amount = log.values()  # there can be several different aliases
+            (
+                sender,
+                receiver,
+                amount,
+            ) = log.values()  # there can be several different aliases
             balances[sender] -= amount
             checkpoints[sender][block] = balances[sender]
             balances[receiver] += amount

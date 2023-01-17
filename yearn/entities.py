@@ -69,30 +69,31 @@ class UserTx(db.Entity):
     type = Required(str)
     from_address = Required(str, column="from")
     to_address = Required(str, column="to")
-    amount = Required(Decimal,38,18)
-    price = Required(Decimal,38,18)
-    value_usd = Required(Decimal,38,18)
-    gas_used = Required(Decimal,38,1)
-    gas_price = Required(Decimal,38,1)
-
+    amount = Required(Decimal, 38, 18)
+    price = Required(Decimal, 38, 18)
+    value_usd = Required(Decimal, 38, 18)
+    gas_used = Required(Decimal, 38, 1)
+    gas_price = Required(Decimal, 38, 1)
 
 
 class PartnerHarvestEvent(db.Entity):
     _table_ = 'partners_txs'
     partner_id = PrimaryKey(int, auto=True)
-    
+
     block = Required(int)
     timestamp = Required(int)
-    balance = Required(Decimal,38,18)
-    total_supply = Required(Decimal,38,18)
-    vault_price = Required(Decimal,38,18)
-    balance_usd = Required(Decimal,38,18)
-    share = Required(Decimal,38,18)
-    payout_base = Required(Decimal,38,18)
-    protocol_fee = Required(Decimal,38,18)
-    wrapper = Required(Address, reverse='partners_tx') # we use `Address` instead of `Token` because some partner wrappers are unverified
+    balance = Required(Decimal, 38, 18)
+    total_supply = Required(Decimal, 38, 18)
+    vault_price = Required(Decimal, 38, 18)
+    balance_usd = Required(Decimal, 38, 18)
+    share = Required(Decimal, 38, 18)
+    payout_base = Required(Decimal, 38, 18)
+    protocol_fee = Required(Decimal, 38, 18)
+    wrapper = Required(
+        Address, reverse='partners_tx'
+    )  # we use `Address` instead of `Token` because some partner wrappers are unverified
     vault = Required(str)
-    
+
 
 db.bind(
     provider="postgres",
@@ -101,5 +102,5 @@ db.bind(
     password=os.environ.get("PGPASSWORD", ""),
     database=os.environ.get("PGDATABASE", "postgres"),
 )
-    
+
 db.generate_mapping(create_tables=True)

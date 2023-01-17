@@ -24,10 +24,16 @@ from yearn.utils import contract
 
 logger = logging.getLogger(__name__)
 
+
 @ttl_cache(10000)
 def get_price(token, block=None, return_price_during_vault_downtime: bool = False):
     token = unwrap_token(token)
-    return find_price(token, block, return_price_during_vault_downtime=return_price_during_vault_downtime)
+    return find_price(
+        token,
+        block,
+        return_price_during_vault_downtime=return_price_during_vault_downtime,
+    )
+
 
 def unwrap_token(token):
     token = str(token)
@@ -41,7 +47,7 @@ def unwrap_token(token):
         elif token == "0x27D22A7648e955E510a40bDb058333E9190d12D4":
             return "0x0cec1a9154ff802e7934fc916ed7ca50bde6844e"  # PPOOL -> POOL
 
-    if chain.id in [ Network.Mainnet, Network.Fantom ]:
+    if chain.id in [Network.Mainnet, Network.Fantom]:
         if aave and token in aave:
             token = aave.atoken_underlying(token)
             logger.debug("aave -> %s", token)
@@ -73,7 +79,11 @@ def find_price(token, block, return_price_during_vault_downtime: bool = False):
         if token == '0xd9e28749e80D867d5d14217416BFf0e668C10645':
             logger.debug('xcredit -> unwrap')
             wrapper = contract(token)
-            price = get_price(wrapper.token(), block=block) * wrapper.getShareValue(block_identifier=block) / 1e18
+            price = (
+                get_price(wrapper.token(), block=block)
+                * wrapper.getShareValue(block_identifier=block)
+                / 1e18
+            )
 
     elif chain.id == Network.Mainnet:
         # no liquid market for yveCRV-DAO -> return CRV token price
@@ -91,7 +101,7 @@ def find_price(token, block, return_price_during_vault_downtime: bool = False):
         band,
         uniswap_v2,
         uniswap_v3,
-        uniswap_v1
+        uniswap_v1,
     ]
     for market in markets:
         if price:

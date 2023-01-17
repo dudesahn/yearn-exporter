@@ -41,7 +41,7 @@ OTHER_LONG_TERM_ASSETS = {
         '0xaf988afF99d3d0cb870812C325C588D8D8CB7De8',  # SLP (KP3R/ETH)
     },
     Network.Fantom: {
-        '',  # 
+        '',  #
     },
 }.get(chain.id, set())
 
@@ -62,9 +62,11 @@ def get_token_bucket(token) -> str:
         if str(e).startswith('Source for') and str(e).endswith('has not been verified'):
             return 'Other short term assets'
         raise
-    
+
     if (
-        token in stablecoins or token in INTL_STABLECOINS or (fixed_forex and token in fixed_forex)
+        token in stablecoins
+        or token in INTL_STABLECOINS
+        or (fixed_forex and token in fixed_forex)
     ):  # or token == '0x9ba60bA98413A60dB4C651D4afE5C937bbD8044B': # yla
         return 'Cash & cash equivalents'
     if token in ETH_LIKE:
@@ -94,7 +96,9 @@ def _unwrap_token(token) -> str:
             str(_unwrap_token(coin)) for coin in curve.get_underlying_coins(pool)
         )
         return _pool_bucket(pool_tokens)
-    if bal.balancer and bal.balancer.is_balancer_pool(token):  # should only be YLA # TODO figure this out
+    if bal.balancer and bal.balancer.is_balancer_pool(
+        token
+    ):  # should only be YLA # TODO figure this out
         pool_tokens = set(
             str(_unwrap_token(coin)) for coin in contract(token).getCurrentTokens()
         )

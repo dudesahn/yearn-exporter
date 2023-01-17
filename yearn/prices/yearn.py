@@ -74,7 +74,7 @@ class YearnLens(metaclass=Singleton):
             except MulticallError:
                 return None
             else:
-                return [share_price / 10 ** decimals, underlying]
+                return [share_price / 10**decimals, underlying]
 
         # v1 vaults use getPricePerFullShare scaled to 18 decimals
         if hasattr(vault, 'getPricePerFullShare'):

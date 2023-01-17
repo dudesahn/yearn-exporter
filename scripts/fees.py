@@ -9,16 +9,82 @@ from web3._utils.events import construct_event_topic_set
 from yearn.prices.magic import get_price
 from yearn.utils import contract
 from brownie.exceptions import ContractNotFound
-from yearn.events import get_logs_asap_2
+from yearn.events import get_logs_asap
+from hexbytes import HexBytes
+
 
 def main():
     print("We've started")
+
+    # ADD YOUR ADDRESSES HERE
+    me = ['0x8Ef63b525fceF7f8662D98F77f5C9A86ae7dFE09']
+    fish = [
+        '0x98AA6B78ed23f4ce2650DA85604ceD5653129A21',
+        '0xC3D6880fD95E06C816cB030fAc45b3ffe3651Cb0',
+        '0xE7a43665677AcfC6A3B15f00b68119c486EC56A3',
+    ]
+    j_mainnet = [
+        '0xB28Af40C766044915d6f45313d2A8d94481F646F',
+        '0x3b2fFAd60b5D1F5B5e490419275f568e4A8Eb522',
+        '0xAf6D9b59D61AA7E2c1DB7Be7E923A6999FeDEB7a',
+        '0xB357805B223E8B61e2adF5b3C79369F436995db8',
+    ]
+    tonkers = ['0x1F93b58fb2cF33CfB68E73E94aD6dD7829b1586D']  # both networks
+    FP = ['0x5C46eee2edFb8a00b1C9269C4365e206F7C9FBdC']  # both networks
+    mickey = ['0xC2De6459CAa4d11a5E3Eee3427e126BfA5FE4613']  # both networks
+    poolpi = [
+        '0x03ebbFCc5401beef5B4A06c3BfDd26a75cB09A84',
+        '0x05B7D0dfdD845c58AbC8B78b02859b447b79ed34',
+    ]  # both networks
+    wavey = [
+        '0x64440c76dd749ea2235834699d9d9dee11945df2',
+        '0xA0308730cE2a6E8C9309688433D46bb05260A816',
+    ]  # both networks
+
+    fish_fantom = ['0x98AA6B78ed23f4ce2650DA85604ceD5653129A21']
+    me_fantom = [
+        '0xBedf3Cf16ba1FcE6c3B751903Cf77E51d51E05b8',
+        '0x8Ef63b525fceF7f8662D98F77f5C9A86ae7dFE09',
+    ]
+    j_fantom = ['0xB357805B223E8B61e2adF5b3C79369F436995db8']
+
+    # part-time or non-doer
+    slim = ['0xe495a7c2D974Cfb4CD71838A6F39d3D0BeBDDE82']
+    mono = ['0xE53c55e8641438E64d2B3559b4Ae9a47B6e1ce9b']
+    lance = [
+        '0xC27DdC26F48724AD90E4d152940e4981af7Ed50d',
+        '0xFed8555bDE8DEf739beC596a1b6309185C4096f5',
+    ]
+    charles = ['0x21f2A189690013aA15d495DE35a837F5c7B10F89']
+    matt = ['0x1a123d835b006d27d4978c8eb40b14f08e0b8607']
+    gary = ['0x53dda38e4f091cd5771a998601aecaf25a68dbaa']
+    akshay = [
+        '0xaa9e20bab58d013220d632874e9fe44f8f971e4d',
+        '0x7495B77b15fCb52fbb7BCB7380335d819ce4c04B',
+    ]
+
+    my_wallets = poolpi
+    print("Current chain height:", chain.height)
+
     if chain.id == 1:
-        from_block = 12059089
+        if my_wallets == mickey:  # started in November
+            from_block = 13527160  # Oct 31 2021
+        else:
+            from_block = 13329513
+        # near EOD on 9-30-21, 13329513. strategist distro for sept was the day before.
+        # 12059089, the date I used at first, before I got any rewards
         dai = contract("0x5f18C75AbDAe578b483E5F43f12a39cF75b973a9")
         dai = web3.eth.contract(str(dai), abi=dai.abi)
     else:
-        from_block = 8042204 # 302 days ago
+        if my_wallets == mickey:  # started in November
+            from_block = 20562879  # oct 30 2021
+        elif my_wallets == slim:
+            from_block = 30384059  # Feb 8 2022
+        else:
+            from_block = 17994789
+        # 8042204 poolpi's date
+        # 29418132 ~1000 blocks before I got my first rewards on Fantom
+        # 17994789 midday 9-30-21
 
         dai = contract("0x0DEC85e74A92c52b7F708c4B10207D9560CEFaf0")
         dai = web3.eth.contract(str(dai), abi=dai.abi)
@@ -26,16 +92,13 @@ def main():
 
     print(f"abi: {dai.events.Transfer().abi}")
 
-    # ADD YOUR ADDRESSES HERE
-    my_wallets = ['0x03ebbFCc5401beef5B4A06c3BfDd26a75cB09A84', '0x05B7D0dfdD845c58AbC8B78b02859b447b79ed34']
-
     topics = construct_event_topic_set(
         dai.events.Transfer().abi,
         web3.codec,
         {'receiver': my_wallets},
     )
 
-    logs = get_logs_asap_2(topics, from_block, chain.height, 1)
+    logs = get_logs_asap(topics, None, from_block, chain.height, 1)
 
     print(f"Logs fetched. size = {len(logs)}")
     events = dai.events.Transfer().processReceipt({'logs': logs})
@@ -47,14 +110,15 @@ def main():
 
         if chain.id == 1:
             # skip scam tokens or repeated ones we know aren't vault tokens
+            # mainly do this to save time or tokens that crash the script
             to_skip = [
                 "0x34278F6f40079eae344cbaC61a764Bcf85AfC949",  # scam token FF9
                 "0xfFA55849a7309C7f4fB4De88d804fD546A66C271",  # scam token dydex
+                "0xF9d25EB4C75ed744596392cf89074aFaA43614a8",  # scam token up1
                 "0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C",  # BNT
                 "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",  # USDC
                 "0x5282a4eF67D9C33135340fB3289cc1711c13638C",  # Iron Bank pool token
                 "0x48Fb253446873234F2fEBbF9BdeAA72d9d387f94",  # vBNT
-                "0x6B175474E89094C44Da98b954EedeAC495271d0F",  # DAI
                 "0x2aECCB42482cc64E087b6D2e5Da39f5A7A7001f8",  # RULER (lol)
                 "0xdAC17F958D2ee523a2206206994597C13D831ec7",  # USDT
                 "0x99D8a9C45b2ecA8864373A26D1459e3Dff1e17F3",  # MIM
@@ -83,7 +147,7 @@ def main():
                 "0x32296969Ef14EB0c6d29669C550D4a0449130230",  # B-stETH-STABLE
                 "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",  # WBTC
                 "0x33Dde19C163cDccE4E5a81f04a2Af561b9Ef58d7",
-                "0x76a34D72b9CF97d972fB0e390eB053A37F211c74", # element
+                "0x76a34D72b9CF97d972fB0e390eB053A37F211c74",  # element
                 "0x90CA5cEf5B29342b229Fb8AE2DB5d8f4F894D652",
                 "0x52C9886d5D87B0f06EbACBEff750B5Ffad5d17d9",
                 "0x7C9cF12d783821d5C63d8E9427aF5C44bAd92445",
@@ -96,101 +160,167 @@ def main():
                 "0xA47D1251CF21AD42685Cc6B8B3a186a73Dbd06cf",
                 "0xB70c25D96EF260eA07F650037Bf68F5d6583885e",
                 "0x7Edde0CB05ED19e03A9a47CD5E53fC57FDe1c80c",
-                "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD", # UST
-                "0xbA38029806AbE4B45D5273098137DDb52dA8e62F", # PLP
-                "0x2ba592F78dB6436527729929AAf6c908497cB200", # cream
-                "0x92B767185fB3B04F881e3aC8e5B0662a027A1D9f", # crdai
-                "0xdF5e0e81Dff6FAF3A7e52BA697820c5e32D806A8", # yDAI+yUSDC+yUSDT+yTUSD
-                "0xED196D746493bC855f95Ce5346C0161F68DB874b", # SHIK
-                "0x82dfDB2ec1aa6003Ed4aCBa663403D7c2127Ff67", # akSwap.io
-                "0x0316EB71485b0Ab14103307bf65a021042c6d380", # HBTC
-                "0xEb1a6C6eA0CD20847150c27b5985fA198b2F90bD", # element
+                "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD",  # UST
+                "0xbA38029806AbE4B45D5273098137DDb52dA8e62F",  # PLP
+                "0x2ba592F78dB6436527729929AAf6c908497cB200",  # cream
+                "0x92B767185fB3B04F881e3aC8e5B0662a027A1D9f",  # crdai
+                "0xdF5e0e81Dff6FAF3A7e52BA697820c5e32D806A8",  # yDAI+yUSDC+yUSDT+yTUSD
+                "0xED196D746493bC855f95Ce5346C0161F68DB874b",  # SHIK
+                "0x82dfDB2ec1aa6003Ed4aCBa663403D7c2127Ff67",  # akSwap.io
+                "0x0316EB71485b0Ab14103307bf65a021042c6d380",  # HBTC
+                "0xEb1a6C6eA0CD20847150c27b5985fA198b2F90bD",  # element
                 "0x2361102893CCabFb543bc55AC4cC8d6d0824A67E",
                 "0xEb1a6C6eA0CD20847150c27b5985fA198b2F90bD",
                 "0x2361102893CCabFb543bc55AC4cC8d6d0824A67E",
-                "0x49D72e3973900A195A155a46441F0C08179FdB64", # creth2
-                "0x6Bba316c48b49BD1eAc44573c5c871ff02958469", # gas
-                "0x03E173Ad8d1581A4802d3B532AcE27a62c5B81dc", # THALES
-                "0x6810e776880C02933D47DB1b9fc05908e5386b96", # GNO
-                "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2", # SUSHI
-                "0x584bC13c7D411c00c01A62e8019472dE68768430", # Hegic
+                "0x49D72e3973900A195A155a46441F0C08179FdB64",  # creth2
+                "0x6Bba316c48b49BD1eAc44573c5c871ff02958469",  # gas
+                "0x03E173Ad8d1581A4802d3B532AcE27a62c5B81dc",  # THALES
+                "0x6810e776880C02933D47DB1b9fc05908e5386b96",  # GNO
+                "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2",  # SUSHI
+                "0x584bC13c7D411c00c01A62e8019472dE68768430",  # Hegic
+                "0x4f3E8F405CF5aFC05D68142F3783bDfE13811522",  # USDN3Crv
+                "0xC18360217D8F7Ab5e7c516566761Ea12Ce7F9D72",  # ENS
+                "0x908599FDf490b73D171B57731bd4Ca95b7F0DE6a",  # scam
+                "0x111111111117dC0aa78b770fA6A738034120C302",
+                "0x41D5D79431A913C4aE7d69a668ecdfE5fF9DFB68",
+                "0x865377367054516e17014CcdED1e7d814EDC9ce4",
+                "0xdBdb4d16EdA451D0503b854CF79D55697F90c8DF",
+                "0xA952dC25d8454a7611277cD77BE8285cD0192ceE",
+                "0xc85E0474068dbA5B49450c26879541EE6Cc94554",
             ]
         elif chain.id == 250:
             to_skip = [
                 # FTM
-                "0x841FAD6EAe12c286d1Fd18d1d525DFfA75C7EFFE", # BOO
-                "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75", # USDC
-                "0x328A7b4d538A2b3942653a9983fdA3C12c571141", # iUSDC
-                "0xD0660cD418a64a1d44E9214ad8e459324D8157f1", # WOOFY
-                "0x049d68029688eAbF473097a2fC38ef61633A3C7A", # fusdt
-                "0xf16e81dce15B08F326220742020379B855B87DF9", # ice
-                "0x92D5ebF3593a92888C25C0AbEF126583d4b5312E", # fusdt+dai+usdc
-                "0x4f3E8F405CF5aFC05D68142F3783bDfE13811522", # fusdt+dai+usdc gauge
-                "0x1E4F97b9f9F913c46F1632781732927B9019C68b", # crv
-                "0x8D11eC38a3EB5E956B052f67Da8Bdc9bef8Abf3E", # dai
-                "0x27E611FD27b276ACbd5Ffd632E5eAEBEC9761E40", # dai-usdc
-                "0x8866414733F22295b7563f9C5299715D2D76CAf4", # dai-usdc gauge
-                "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83", # wftm
-                "0x2F96f61a027B5101E966EC1bA75B78f353259Fb3", # TNGLv3
-                "0x82f0B8B456c1A451378467398982d4834b6829c1", # mim
-                "0x2dd7C9371965472E5A5fD28fbE165007c61439E1", # 3poolv2-f
-                "0x5Cc61A78F164885776AA610fb0FE1257df78E59B", # spirit
-                "0xD02a30d33153877BC20e5721ee53DeDEE0422B2F", # g3crv
-                "0xd4F94D0aaa640BBb72b5EEc2D85F6D114D81a88E", # g3crv gauge
-                "0xd8321AA83Fb0a4ECd6348D4577431310A6E0814d", # geist
-                "0x87e377820010D818aA316F8C3F1C2B9d025eb5eE", # spam
-                "0x06e3C4da96fd076b97b7ca3Ae23527314b6140dF", # fUSDT+DAI+USDC-gauge
-                "0x95bf7E307BC1ab0BA38ae10fc27084bC36FcD605", # anyUSDC
-                "0x2823D10DA533d9Ee873FEd7B16f4A962B2B7f181", # anyUSDT
+                "0x841FAD6EAe12c286d1Fd18d1d525DFfA75C7EFFE",  # BOO
+                "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75",  # USDC
+                "0x328A7b4d538A2b3942653a9983fdA3C12c571141",  # iUSDC
+                "0xD0660cD418a64a1d44E9214ad8e459324D8157f1",  # WOOFY
+                "0xc5A9848b9d145965d821AaeC8fA32aaEE026492d",  # OXDv2
+                "0x888EF71766ca594DED1F0FA3AE64eD2941740A20",  # SOLID
+                "0xc165d941481e68696f43EE6E99BFB2B23E0E3114",  # OXDv1
+                "0xDA0053F0bEfCbcaC208A3f867BB243716734D809",  # oxSOLID
+                "0x9aC7664060a3e388CEB157C5a0B6064BeFFAb9f2",  # anyFTM/FTM LP
+                "0x6362496Bef53458b20548a35A2101214Ee2BE3e0",  # anyFTM
+                "0xbcab7d083Cf6a01e0DdA9ed7F8a02b47d125e682",  # USDC/MIM LP
+                "0x049d68029688eAbF473097a2fC38ef61633A3C7A",  # fusdt
+                "0xf16e81dce15B08F326220742020379B855B87DF9",  # ice
+                "0x92D5ebF3593a92888C25C0AbEF126583d4b5312E",  # fusdt+dai+usdc
+                "0x4f3E8F405CF5aFC05D68142F3783bDfE13811522",  # fusdt+dai+usdc gauge
+                "0x1E4F97b9f9F913c46F1632781732927B9019C68b",  # crv
+                "0x8D11eC38a3EB5E956B052f67Da8Bdc9bef8Abf3E",  # dai
+                "0x27E611FD27b276ACbd5Ffd632E5eAEBEC9761E40",  # dai-usdc
+                "0x8866414733F22295b7563f9C5299715D2D76CAf4",  # dai-usdc gauge
+                "0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83",  # wftm
+                "0x2F96f61a027B5101E966EC1bA75B78f353259Fb3",  # TNGLv3
+                "0x82f0B8B456c1A451378467398982d4834b6829c1",  # mim
+                "0x2dd7C9371965472E5A5fD28fbE165007c61439E1",  # 3poolv2-f
+                "0x5Cc61A78F164885776AA610fb0FE1257df78E59B",  # spirit
+                "0xD02a30d33153877BC20e5721ee53DeDEE0422B2F",  # g3crv
+                "0xd4F94D0aaa640BBb72b5EEc2D85F6D114D81a88E",  # g3crv gauge
+                "0xd8321AA83Fb0a4ECd6348D4577431310A6E0814d",  # geist
+                "0x87e377820010D818aA316F8C3F1C2B9d025eb5eE",  # spam
+                "0x06e3C4da96fd076b97b7ca3Ae23527314b6140dF",  # fUSDT+DAI+USDC-gauge
+                "0x95bf7E307BC1ab0BA38ae10fc27084bC36FcD605",  # anyUSDC
+                "0x2823D10DA533d9Ee873FEd7B16f4A962B2B7f181",  # anyUSDT
+                "0xfcef8a994209d6916EB2C86cDD2AFD60Aa6F54b1",  # fBEETS
+                "0xF24Bcf4d1e507740041C9cFd2DddB29585aDCe1e",  # BEETS
+                "0xe826F3C308aEB14cF901e19af1E5a0f7E73b625C",  # scam token
             ]
 
+        if token in to_skip:
+            print("Non-vault token from our list to skip")
+            continue
 
-
-            if token in to_skip:
-                print("\nNon-vault token from our list to skip")
-                continue
-
+        # print("\nToken address:", token)  # use this for debugging when we crash on a token
         token_contract = contract(token)
+        src, dst, amount = event.args.values()
 
         try:
             token_contract.apiVersion()
         except:
-            print(
-                "\n",
-                token_contract.symbol(),
-                token,
-                "is not a vault token and shouldn't be counted",
-            )
-        src, dst, amount = event.args.values()
-
-        # Avoid double dipping
-        if src in my_wallets:
-            print(f"Skipping sending form {src} to {dst}")
-            continue
-
-        # ignore income from addresses we know weren't fee distros. mainly other transfers and mints.
-        addresses_to_ignore = [
-            "0x677Ae1C4FDa1A986a23a055Bbd0A94f8e5b284De",  # deposited test to ib vault here, then sent over
-            "0x0000000000000000000000000000000000000000",  # burn/mint address
-            "0x25B28EE7f335F0396f41f129039F1583345B21b8",  # dudesahn.eth
-            "0xF5BCE5077908a1b7370B9ae04AdC565EBd643966",  # bentobox FTM
-        ]
-        if src in addresses_to_ignore:
-            print("\nNot a fee distro, skip")
-            continue
+            if (
+                token != "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+            ):  # DAI is okay, we get it for SMS grants
+                print(
+                    token,
+                    "is not a vault token and shouldn't be counted",
+                )
+                continue
 
         try:
             amount /= 10 ** contract(token).decimals()
         except (ValueError, ContractNotFound, AttributeError):
+            print("Token issue, skipping")
             continue
 
         try:
             price = get_price(event.address, block=event.blockNumber)
         except:
-            print("\nPricing error for", token_contract.symbol(), "on", token_contract.address, "****************************************")
+            print(
+                "Pricing error for",
+                token_contract.symbol(),
+                "on",
+                token_contract.address,
+                "****************************************",
+            )
             print(f"Amount: {amount}")
             continue
-        print("\nToken Symbol:", token_contract.symbol())
+        print("\nDate:", datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d'))
+
+        # check that our source of tokens is a strategy
+        try:
+            strategy = contract(src)
+            strategy.apiVersion()
+            strategy.want()  # do this to ignore vault tokens
+        except:
+            weird_sharers = [
+                '0xD80cC23149120D194F05606749388F32065aE66C',
+                '0x9a65E8ECc9D0112daB0e05c9496894227765B6b8',
+                '0xE7f61F2D0c781743F754ad5Af12b94935De36fBb',
+            ]
+            if src in weird_sharers:
+                print("One of the weird sharers, it's fine")
+            elif src == "0xD152f549545093347A162Dce210e7293f1452150":
+                if token == "0xdb25cA703181E7484a155DD612b06f57E12Be5F0":
+                    print("yvYFI distro from disperse.app, coordinape payment")
+                    tx_hash = event.transactionHash.hex()
+                    hashes_to_skip = [
+                        '0x38201edb06e8fd3b9aa9d4142594d28cb73768770fdcb68a4da24d8cb0742cfc',
+                        '0x8226b3705657f34216483f5091f8bd3eeea385a64b6da458eeaff78521596c28',
+                        '0x514591e6f8dcac50b6deeabce8a819540cc7caecc182c39dfb93280abb34d3d6',
+                        '0x371b6a601da36382067a20236d41f540fc77dc793d64d24fc1bdbcd2c666db2b',
+                        '0x2a7c60bb7dd6c15a6d0351e6a2b9f01e51fa6e7df9d1e5f02a3759640211ee56',
+                    ]
+                    if tx_hash in hashes_to_skip:
+                        print("Regular coordinape distro, not SMS")
+                        continue
+                    print(f"Transaction: {tx_hash}")
+                    print(f"Source: {src}")
+                elif token == "0x6B175474E89094C44Da98b954EedeAC495271d0F":
+                    tx_hash = event.transactionHash.hex()
+                    if (
+                        amount == 10417
+                        or tx_hash
+                        == "0x4adad1e3cff3410d50fb11ca31fa7029d8533b79192f120c2a445e1241711320"
+                    ):  # ydesc payments and wavey monthly grant
+                        print("DAI disperse, but not from SMS")
+                        continue
+                    print("DAI grant from disperse.app")
+                    print(f"Transaction: {tx_hash}")
+                    print(f"Source: {src}")
+                else:
+                    print("Not an SMS grant")
+                    continue
+            else:
+                tx_hash = event.transactionHash.hex()
+                print(f"Transaction: {tx_hash}")
+                print(f"Source: {src}")
+                print(
+                    "Appears to be a transfer, not a fee distro **********************************************"
+                )
+                continue
+
+        print("Token Symbol:", token_contract.symbol())
         print(f"Amount: {amount}")
         print(f"Price: {price}")
         month = datetime.utcfromtimestamp(ts).strftime('%Y-%m')

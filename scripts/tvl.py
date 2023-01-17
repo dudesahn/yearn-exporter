@@ -7,7 +7,7 @@ from tabulate import tabulate
 from toolz import groupby
 from yearn.yearn import Yearn
 
-sentry_sdk.set_tag('script','tvl')
+sentry_sdk.set_tag('script', 'tvl')
 
 warnings.simplefilter("ignore", BrownieEnvironmentWarning)
 

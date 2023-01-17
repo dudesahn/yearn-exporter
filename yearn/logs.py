@@ -11,7 +11,5 @@ def setup_logging():
     )
 
     warnings.filterwarnings(
-        'ignore',
-        r".*defines a 'balance' function.*",
-        BrownieEnvironmentWarning
+        'ignore', r".*defines a 'balance' function.*", BrownieEnvironmentWarning
     )

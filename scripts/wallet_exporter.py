@@ -10,9 +10,10 @@ from yearn.outputs.postgres.utils import last_recorded_block
 from yearn.utils import closest_block_after_timestamp
 from yearn.yearn import Yearn
 
-sentry_sdk.set_tag('script','wallet_exporter')
+sentry_sdk.set_tag('script', 'wallet_exporter')
 
 logger = logging.getLogger('yearn.wallet_exporter')
+
 
 def main():
     while True:
@@ -25,7 +26,7 @@ def main():
             export_chunk,
             export_snapshot,
             'aggregate{param="total wallets"}',
-            _generate_snapshot_range
+            _generate_snapshot_range,
         )
 
 
@@ -34,12 +35,7 @@ def export_chunk(chunk, export_snapshot_func):
     for snapshot in chunk:
         ts = snapshot.timestamp()
         export_snapshot_func(
-            {
-                'yearn': yearn,
-                'snapshot': snapshot,
-                'ts': ts,
-                'exporter_name': 'wallets'
-            }
+            {'yearn': yearn, 'snapshot': snapshot, 'ts': ts, 'exporter_name': 'wallets'}
         )
 
 

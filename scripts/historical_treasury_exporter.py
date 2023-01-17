@@ -8,16 +8,21 @@ from yearn.networks import Network
 from yearn.treasury.treasury import YearnTreasury
 from yearn.utils import closest_block_after_timestamp
 
-sentry_sdk.set_tag('script','historical_treasury_exporter')
+sentry_sdk.set_tag('script', 'historical_treasury_exporter')
 
 logger = logging.getLogger('yearn.historical_treasury_exporter')
 
+
 def main():
     start = datetime.now(tz=timezone.utc)
-    
+
     end = {
-        Network.Mainnet: datetime(2020, 7, 21, 10, 1, tzinfo=timezone.utc), # first treasury tx
-        Network.Fantom: datetime(2021, 10, 12, tzinfo=timezone.utc), # Fantom Multisig deployed
+        Network.Mainnet: datetime(
+            2020, 7, 21, 10, 1, tzinfo=timezone.utc
+        ),  # first treasury tx
+        Network.Fantom: datetime(
+            2021, 10, 12, tzinfo=timezone.utc
+        ),  # Fantom Multisig deployed
     }[chain.id]
 
     data_query = {
@@ -25,13 +30,7 @@ def main():
         Network.Fantom: 'treasury_assets{network="FTM"}',
     }[chain.id]
 
-    export_historical(
-        start,
-        end,
-        export_chunk,
-        export_snapshot,
-        data_query
-    )
+    export_historical(start, end, export_chunk, export_snapshot, data_query)
 
 
 def export_chunk(chunk, export_snapshot_func):
@@ -43,7 +42,7 @@ def export_chunk(chunk, export_snapshot_func):
                 'treasury': treasury,
                 'snapshot': snapshot,
                 'ts': ts,
-                'exporter_name': 'historical_treasury'
+                'exporter_name': 'historical_treasury',
             }
         )
 

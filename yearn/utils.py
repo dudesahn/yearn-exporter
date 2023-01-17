@@ -20,9 +20,10 @@ _erc20 = lru_cache(maxsize=None)(interface.ERC20)
 
 PREFER_INTERFACE = {
     Network.Arbitrum: {
-        "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f": _erc20, # empty ABI for WBTC when compiling the contract
+        "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f": _erc20,  # empty ABI for WBTC when compiling the contract
     }
 }
+
 
 def safe_views(abi):
     return [
@@ -70,8 +71,13 @@ def get_code(address, block=None):
     try:
         return web3.eth.get_code(address, block_identifier=block)
     except ValueError as exc:
-        if isinstance(exc.args[0], dict) and 'missing trie node' in exc.args[0]['message']:
-            raise ArchiveNodeRequired('querying historical state requires an archive node')
+        if (
+            isinstance(exc.args[0], dict)
+            and 'missing trie node' in exc.args[0]['message']
+        ):
+            raise ArchiveNodeRequired(
+                'querying historical state requires an archive node'
+            )
         raise exc
 
 
@@ -102,7 +108,9 @@ def contract_creation_block(address) -> int:
 
     # only happens on fantom
     if hi == barrier + 1:
-        logger.warning('could not determine creation block for a contract deployed prior to barrier')
+        logger.warning(
+            'could not determine creation block for a contract deployed prior to barrier'
+        )
         return 0
 
     return hi if hi != end else None
@@ -125,6 +133,7 @@ class Singleton(type):
 _contract_lock = threading.Lock()
 _contract = lru_cache(maxsize=None)(Contract)
 
+
 def contract(address):
     with _contract_lock:
         if chain.id in PREFER_INTERFACE:
@@ -143,4 +152,4 @@ def is_contract(address: str) -> bool:
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+        yield lst[i : i + n]

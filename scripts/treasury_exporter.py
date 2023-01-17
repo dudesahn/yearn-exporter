@@ -7,7 +7,7 @@ from brownie import chain
 from yearn.outputs.victoria import output_duration
 from yearn.treasury.treasury import YearnTreasury
 
-sentry_sdk.set_tag('script','treasury_exporter')
+sentry_sdk.set_tag('script', 'treasury_exporter')
 
 logger = logging.getLogger('yearn.treasury_exporter')
 sleep_interval = int(os.environ.get('SLEEP_SECONDS', '0'))

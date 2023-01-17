@@ -6,9 +6,11 @@ from sentry_sdk.integrations.threading import ThreadingIntegration
 
 from yearn.networks import Network
 
+
 def before_send(event, hint):
     # custom event parsing goes here
     return event
+
 
 def set_custom_tags():
     set_tag("chain_id", chain.id)
@@ -32,7 +34,7 @@ def setup_sentry():
             debug=False,
             integrations=[ThreadingIntegration(propagate_hub=True)],
             ignore_errors=[
-                KeyboardInterrupt, # these can be created when exiting a script with ctrl+c or when an exception is raised in a child thread. Ignore in both cases
-            ]
+                KeyboardInterrupt,  # these can be created when exiting a script with ctrl+c or when an exception is raised in a child thread. Ignore in both cases
+            ],
         )
         set_custom_tags()

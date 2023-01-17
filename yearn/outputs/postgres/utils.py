@@ -8,13 +8,17 @@ from yearn.utils import contract, is_contract
 
 logger = logging.getLogger(__name__)
 
+
 @db_session
 def cache_address(address: str) -> Address:
     address = convert.to_address(address)
     address_entity = Address.get(chainid=chain.id, address=address)
     if not address_entity:
-        address_entity = Address(chainid=chain.id, address=address, is_contract=is_contract(address))
+        address_entity = Address(
+            chainid=chain.id, address=address, is_contract=is_contract(address)
+        )
     return address_entity
+
 
 @db_session
 def cache_token(address: str) -> Token:
@@ -22,31 +26,46 @@ def cache_token(address: str) -> Token:
     token = Token.get(address=address_entity)
     if not token:
         token = contract(address)
-        symbol, name, decimals = fetch_multicall([token,'symbol'],[token,'name'],[token,'decimals'])
-        token = Token(address=address_entity, symbol=symbol, name=name, decimals=decimals)
+        symbol, name, decimals = fetch_multicall(
+            [token, 'symbol'], [token, 'name'], [token, 'decimals']
+        )
+        token = Token(
+            address=address_entity, symbol=symbol, name=name, decimals=decimals
+        )
         print(f'token {symbol} added to postgres')
     return token
+
 
 @db_session
 def last_recorded_block(Entity: db.Entity) -> int:
     '''
     Returns last block recorded for sql entity type `Entity`
     '''
-    TreasuryTx = 1 # NOTE: Get rid of this when treasury txs are implemented
+    TreasuryTx = 1  # NOTE: Get rid of this when treasury txs are implemented
     if Entity == UserTx:
-        return select(max(e.block) for e in Entity if e.vault.address.chainid == chain.id).first()
+        return select(
+            max(e.block) for e in Entity if e.vault.address.chainid == chain.id
+        ).first()
     elif Entity == TreasuryTx:
-        return select(max(e.block) for e in Entity if e.token.address.chainid == chain.id).first()
+        return select(
+            max(e.block) for e in Entity if e.token.address.chainid == chain.id
+        ).first()
     return select(max(e.block) for e in Entity if e.chainid == chain.id).first()
+
 
 @db_session
 def fetch_balances(vault_address: str, block=None):
-    token_dbid = select(t.token_id for t in Token if t.address.chainid == chain.id and t.address.address == vault_address).first()
+    token_dbid = select(
+        t.token_id
+        for t in Token
+        if t.address.chainid == chain.id and t.address.address == vault_address
+    ).first()
     if block and block > last_recorded_block(UserTx):
         # NOTE: we use `postgres.` instead of `self.` so we can make use of parallelism
         raise Exception('this block has not yet been cached into postgres')
     if block:
-        balances = db.select(f"""
+        balances = db.select(
+            f"""
             a.wallet, coalesce(amount_in,0) - coalesce(amount_out,0) balance
             from (
                 select "to" wallet, sum(amount) amount_in
@@ -56,9 +75,11 @@ def fetch_balances(vault_address: str, block=None):
                 select "from" wallet, sum(amount) amount_out
                 from user_txs where token_id = $token_dbid and block <= $block
                 group by "from") b on a.wallet = b.wallet
-                """)
+                """
+        )
     else:
-        balances = db.select(f"""
+        balances = db.select(
+            f"""
             a.wallet, coalesce(amount_in,0) - coalesce(amount_out,0) balance
             from (
                 select "to" wallet, sum(amount) amount_in
@@ -68,5 +89,6 @@ def fetch_balances(vault_address: str, block=None):
                 select "from" wallet, sum(amount) amount_out
                 from user_txs where token_id = $token_dbid
                 group by "from") b on a.wallet = b.wallet
-                """)
-    return {wallet: balance for wallet,balance in balances if wallet != ZERO_ADDRESS}
+                """
+        )
+    return {wallet: balance for wallet, balance in balances if wallet != ZERO_ADDRESS}

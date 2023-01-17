@@ -7,9 +7,12 @@ from brownie.network.event import EventLookupError
 from eth_abi import encode_single
 from eth_utils import encode_hex
 from joblib import Parallel, delayed
-from yearn.constants import (ERC20_TRANSFER_EVENT_HASH,
-                             ERC677_TRANSFER_EVENT_HASH, STRATEGIST_MULTISIG,
-                             TREASURY_WALLETS)
+from yearn.constants import (
+    ERC20_TRANSFER_EVENT_HASH,
+    ERC677_TRANSFER_EVENT_HASH,
+    STRATEGIST_MULTISIG,
+    TREASURY_WALLETS,
+)
 from yearn.events import decode_logs
 from yearn.exceptions import PriceError
 from yearn.multicall2 import fetch_multicall
@@ -29,15 +32,16 @@ logger_price_magic.setLevel(logging.CRITICAL)
 
 
 NFTS = [
-    # These are NFTs # TODO 
-    '0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85', # ENS domains
-    '0x01234567bac6fF94d7E4f0EE23119CF848F93245', # EthBlocks
-    '0xD7aBCFd05a9ba3ACbc164624402fB2E95eC41be6', # EthJuanchos
-    '0xeF81c2C98cb9718003A89908e6bd1a5fA8A098A3', # SpaceShiba
-    '0xD1E5b0FF1287aA9f9A268759062E4Ab08b9Dacbe', # .crypto Domain
-    '0x437a6B880d4b3Be9ed93BD66D6B7f872fc0f5b5E', # Soda
-    '0x9d45DAb69f1309F1F55A7280b1f6a2699ec918E8', # yFamily 2021
+    # These are NFTs # TODO
+    '0x57f1887a8BF19b14fC0dF6Fd9B2acc9Af147eA85',  # ENS domains
+    '0x01234567bac6fF94d7E4f0EE23119CF848F93245',  # EthBlocks
+    '0xD7aBCFd05a9ba3ACbc164624402fB2E95eC41be6',  # EthJuanchos
+    '0xeF81c2C98cb9718003A89908e6bd1a5fA8A098A3',  # SpaceShiba
+    '0xD1E5b0FF1287aA9f9A268759062E4Ab08b9Dacbe',  # .crypto Domain
+    '0x437a6B880d4b3Be9ed93BD66D6B7f872fc0f5b5E',  # Soda
+    '0x9d45DAb69f1309F1F55A7280b1f6a2699ec918E8',  # yFamily 2021
 ]
+
 
 def _get_price(token, block=None):
     SKIP_PRICE = [  # shitcoins
@@ -96,21 +100,17 @@ class Treasury:
         self._transfers = []
 
         # define transfer signatures for Transfer events from ERC-20 and ERC-677 contracts
-        transfer_sigs = [
-            ERC20_TRANSFER_EVENT_HASH,
-            ERC677_TRANSFER_EVENT_HASH
+        transfer_sigs = [ERC20_TRANSFER_EVENT_HASH, ERC677_TRANSFER_EVENT_HASH]
+        treasury_addresses = [
+            encode_hex(encode_single('address', address)) for address in self.addresses
         ]
-        treasury_addresses = [encode_hex(encode_single('address', address)) for address in self.addresses]
         self._topics = [
             [
                 transfer_sigs,
                 None,
-                treasury_addresses # Transfers into Treasury wallets
+                treasury_addresses,  # Transfers into Treasury wallets
             ],
-            [
-                transfer_sigs,
-                treasury_addresses # Transfers out of Treasury wallets
-            ]
+            [transfer_sigs, treasury_addresses],  # Transfers out of Treasury wallets
         ]
         self._watch_events_forever = watch_events_forever
         self._done = threading.Event()
@@ -143,7 +143,6 @@ class Treasury:
 
         return list(tokens)
 
-
     def held_assets(self, block=None) -> dict:
         balances = {}
         for address in self.addresses:
@@ -156,10 +155,10 @@ class Treasury:
             decimals = fetch_multicall(
                 *[[contract(token), "decimals"] for token in tokens],
                 block=block,
-                require_success=False
+                require_success=False,
             )
             token_balances = [
-                balance / 10 ** decimal if decimal else balance
+                balance / 10**decimal if decimal else balance
                 for balance, decimal in zip(token_balances, decimals)
             ]
             token_prices = Parallel(8, 'threading')(
@@ -174,10 +173,10 @@ class Treasury:
             # then, add eth
             if block:
                 balance = (
-                    web3.eth.get_balance(address, block_identifier=block) / 10 ** 18
+                    web3.eth.get_balance(address, block_identifier=block) / 10**18
                 )
             else:
-                balance = web3.eth.get_balance(address) / 10 ** 18
+                balance = web3.eth.get_balance(address) / 10**18
             balances[address]['ETH'] = {
                 'balance': balance,
                 'usd value': balance * get_price(weth, block),
@@ -201,7 +200,8 @@ class Treasury:
         return collateral
 
     def maker_collateral(self, block=None) -> dict:
-        if chain.id != Network.Mainnet: return
+        if chain.id != Network.Mainnet:
+            return
         proxy_registry = contract('0x4678f0a6958e4D2Bc4F1BAF7Bc52E8F3564f3fE4')
         cdp_manager = contract('0x5ef30b9986345249bc32d8928B7ee64DE9435E39')
         vat = contract('0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B')
@@ -216,16 +216,20 @@ class Treasury:
             if ink:
                 collateral[address] = {
                     yfi: {
-                        'balance': ink / 10 ** 18,
-                        'usd value': ink / 10 ** 18 * get_price(yfi, block) if ink > 0 else 0,
+                        'balance': ink / 10**18,
+                        'usd value': ink / 10**18 * get_price(yfi, block)
+                        if ink > 0
+                        else 0,
                     }
                 }
         return collateral
 
     def unit_collateral(self, block=None) -> dict:
-        if chain.id != Network.Mainnet: return
-        if block and block < 11315910: return
-        
+        if chain.id != Network.Mainnet:
+            return
+        if block and block < 11315910:
+            return
+
         # NOTE: This only works for YFI collateral, must extend before using for other collaterals
         unitVault = contract("0xb1cff81b9305166ff1efc49a129ad2afcd7bcf19")
         yfi = "0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e"
@@ -235,8 +239,8 @@ class Treasury:
             if bal:
                 collateral[address] = {
                     yfi: {
-                        'balance': bal / 10 ** 18,
-                        'usd value': bal / 10 ** 18 * get_price(yfi, block),
+                        'balance': bal / 10**18,
+                        'usd value': bal / 10**18 * get_price(yfi, block),
                     }
                 }
         return collateral
@@ -251,7 +255,7 @@ class Treasury:
         if maker_debt:
             for address, data in maker_debt.items():
                 debt[address].update(data)
-        
+
         unit_debt = self.unit_debt(block=block)
         if unit_debt:
             for address, data in unit_debt.items():
@@ -266,7 +270,8 @@ class Treasury:
         return debt
 
     def maker_debt(self, block=None) -> dict:
-        if chain.id != Network.Mainnet: return
+        if chain.id != Network.Mainnet:
+            return
         proxy_registry = contract('0x4678f0a6958e4D2Bc4F1BAF7Bc52E8F3564f3fE4')
         cdp_manager = contract('0x5ef30b9986345249bc32d8928B7ee64DE9435E39')
         vat = contract('0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B')
@@ -285,40 +290,67 @@ class Treasury:
         return maker_debt
 
     def unit_debt(self, block=None) -> dict:
-        if chain.id != Network.Mainnet: return
-        if block and block < 11315910: return
+        if chain.id != Network.Mainnet:
+            return
+        if block and block < 11315910:
+            return
         # NOTE: This only works for YFI based debt, must extend before using for other collaterals
         unitVault = contract("0xb1cff81b9305166ff1efc49a129ad2afcd7bcf19")
         yfi = "0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e"
         usdp = '0x1456688345527bE1f37E9e627DA0837D6f08C925'
         unit_debt = {}
         for address in self.addresses:
-            debt = unitVault.getTotalDebt(yfi, address, block_identifier=block) / 10 ** 18
+            debt = (
+                unitVault.getTotalDebt(yfi, address, block_identifier=block) / 10**18
+            )
             unit_debt[address] = {usdp: {'balance': debt, 'usd value': debt}}
         return unit_debt
 
     def compound_debt(self, block=None) -> dict:
-        markets = {market.ctoken for comp in compound.compound.compounds for market in comp.markets}
-        gas_token_markets = [market for market in markets if not hasattr(market,'underlying')]
-        other_markets = [market for market in markets if hasattr(market,'underlying')]
+        markets = {
+            market.ctoken
+            for comp in compound.compound.compounds
+            for market in comp.markets
+        }
+        gas_token_markets = [
+            market for market in markets if not hasattr(market, 'underlying')
+        ]
+        other_markets = [market for market in markets if hasattr(market, 'underlying')]
         markets = gas_token_markets + other_markets
-        underlyings = [weth for market in gas_token_markets] + fetch_multicall(*[[market,'underlying'] for market in other_markets])
-        
-        markets_zip = zip(markets,underlyings)
+        underlyings = [weth for market in gas_token_markets] + fetch_multicall(
+            *[[market, 'underlying'] for market in other_markets]
+        )
+
+        markets_zip = zip(markets, underlyings)
         markets, underlyings = [], []
         for contract, underlying in markets_zip:
             if underlying != ZERO_ADDRESS:
                 markets.append(contract)
                 underlyings.append(underlying)
-        
+
         underlying_contracts = [Contract(underlying) for underlying in underlyings]
-        underlying_decimals = fetch_multicall(*[[underlying,'decimals'] for underlying in underlying_contracts])
+        underlying_decimals = fetch_multicall(
+            *[[underlying, 'decimals'] for underlying in underlying_contracts]
+        )
 
         compound_debt = {}
         for address in self.addresses:
-            debts = fetch_multicall(*[[market,'borrowBalanceStored',address] for market in markets],block=block)
-            debts = [debt / 10 ** decimals if debt else None for debt, decimals in zip(debts,underlying_decimals)]
-            compound_debt[address] = {str(underlying): {'balance': debt, 'usd value': debt * get_price(underlying, block=block)} for underlying, debt in zip(underlyings,debts) if debt}
+            debts = fetch_multicall(
+                *[[market, 'borrowBalanceStored', address] for market in markets],
+                block=block,
+            )
+            debts = [
+                debt / 10**decimals if debt else None
+                for debt, decimals in zip(debts, underlying_decimals)
+            ]
+            compound_debt[address] = {
+                str(underlying): {
+                    'balance': debt,
+                    'usd value': debt * get_price(underlying, block=block),
+                }
+                for underlying, debt in zip(underlyings, debts)
+                if debt
+            }
         return compound_debt
 
     def aave_debt(self, block=None) -> dict:
@@ -364,7 +396,6 @@ class Treasury:
             for transfer_filter in transfer_filters:
                 transfer_logs.append(transfer_filter.get_new_entries())
 
-
     def process_transfers(self, logs):
         for log in logs:
             if log.address in NFTS:
@@ -391,12 +422,17 @@ class Treasury:
 
 
 class YearnTreasury(Treasury):
-    def __init__(self,watch_events_forever=False):
+    def __init__(self, watch_events_forever=False):
         start_block = {
             Network.Mainnet: 10502337,
             Network.Fantom: 18950072,
         }[chain.id]
-        super().__init__('treasury',TREASURY_WALLETS,watch_events_forever=watch_events_forever,start_block=start_block)
+        super().__init__(
+            'treasury',
+            TREASURY_WALLETS,
+            watch_events_forever=watch_events_forever,
+            start_block=start_block,
+        )
 
     def partners_debt(self, block=None) -> dict:
         for i, partner in enumerate(partners):
@@ -414,10 +450,16 @@ class YearnTreasury(Treasury):
 
     # def debt - expends super().debt
 
+
 class StrategistMultisig(Treasury):
-    def __init__(self,watch_events_forever=False):
+    def __init__(self, watch_events_forever=False):
         start_block = {
             Network.Mainnet: 11507716,
             Network.Fantom: 10836306,
         }[chain.id]
-        super().__init__('sms',STRATEGIST_MULTISIG,watch_events_forever=watch_events_forever,start_block=start_block)
+        super().__init__(
+            'sms',
+            STRATEGIST_MULTISIG,
+            watch_events_forever=watch_events_forever,
+            start_block=start_block,
+        )

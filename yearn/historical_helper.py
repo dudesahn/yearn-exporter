@@ -18,7 +18,15 @@ CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", 50))
 
 logger = logging.getLogger('yearn.historical_helper')
 
-def export_historical(start, end, export_chunk_func, export_snapshot_func, data_query, generate_snapshot_range_func=None):
+
+def export_historical(
+    start,
+    end,
+    export_chunk_func,
+    export_snapshot_func,
+    data_query,
+    generate_snapshot_range_func=None,
+):
     if generate_snapshot_range_func is None:
         generate_snapshot_range_func = _generate_snapshot_range
 
@@ -31,10 +39,7 @@ def export_historical(start, end, export_chunk_func, export_snapshot_func, data_
 
     for entry in interval_map:
         snapshots = generate_snapshot_range_func(
-            entry["start"],
-            end,
-            entry["interval"],
-            data_query
+            entry["start"], end, entry["interval"], data_query
         )
 
         chunks = partition_all(CHUNK_SIZE, snapshots)
@@ -54,7 +59,9 @@ def time_tracking(export_snapshot_func):
     @functools.wraps(export_snapshot_func)
     def wrap(*args, **kwargs):
         if len(args) == 0:
-            raise TypeError("export_snapshot_func needs at least one arg which is a dict!")
+            raise TypeError(
+                "export_snapshot_func needs at least one arg which is a dict!"
+            )
 
         arg_hash = args[0]
         ts = arg_hash.get('ts', datetime.now(tz=timezone.utc).timestamp())
@@ -66,8 +73,9 @@ def time_tracking(export_snapshot_func):
         result = export_snapshot_func(*le_args, **kwargs)
         end = time.time()
 
-        output_duration.export(end-start, POOL_SIZE, exporter_name, ts)
+        output_duration.export(end - start, POOL_SIZE, exporter_name, ts)
         return result
+
     return wrap
 
 
@@ -124,10 +132,7 @@ def has_data(ts, data_query):
         'Connection': 'close',
     }
     with requests.Session() as session:
-        response = session.get(
-            url = url,
-            headers = headers
-        )
+        response = session.get(url=url, headers=headers)
         result = response.json()
         return result['status'] == 'success' and len(result['data']['result']) > 0
 

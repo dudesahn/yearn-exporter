@@ -80,7 +80,6 @@ class Ids(IntEnum):
 
 
 class CurveRegistry(metaclass=Singleton):
-
     @wait_or_exit_after
     def __init__(self):
         if chain.id not in curve_contracts:
@@ -137,13 +136,15 @@ class CurveRegistry(metaclass=Singleton):
                     self.token_to_pool[lp_token] = event['pool']
                 elif event.name == 'PoolRemoved':
                     self.registries[event.address].discard(event['pool'])
-                    
+
             # load metapool and curve v5 factories
             self.load_factories()
 
             if not self._done.is_set():
                 self._done.set()
-                logger.info(f'loaded {len(self.token_to_pool)} pools from {len(self.registries)} registries and {len(self.factories)} factories')
+                logger.info(
+                    f'loaded {len(self.token_to_pool)} pools from {len(self.registries)} registries and {len(self.factories)} factories'
+                )
 
             time.sleep(600)
 
@@ -318,19 +319,20 @@ class CurveRegistry(metaclass=Singleton):
         except ValueError as e:
             if str(e) not in [
                 'execution reverted',
-                'No data was returned - the call likely reverted'
-                ]: raise
+                'No data was returned - the call likely reverted',
+            ]:
+                raise
 
             balances = fetch_multicall(
                 *[[contract(pool), 'balances', i] for i, _ in enumerate(coins)],
-                block=block
+                block=block,
             )
 
         if not any(balances):
             raise ValueError(f'could not fetch balances {pool} at {block}')
 
         return {
-            coin: balance / 10 ** dec
+            coin: balance / 10**dec
             for coin, balance, dec in zip(coins, balances, decimals)
         }
 

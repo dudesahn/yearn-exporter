@@ -12,7 +12,7 @@ from yearn.multicall2 import multicall_matrix
 from yearn.utils import contract, contract_creation_block, get_block_timestamp
 from yearn.yearn import Yearn
 
-sentry_sdk.set_tag('script','tokenlist')
+sentry_sdk.set_tag('script', 'tokenlist')
 
 
 def main():
@@ -22,13 +22,19 @@ def main():
         "0xe2F6b9773BF3A015E2aA70741Bde1498bdB9425b",
         "0xBFa4D8AA6d8a379aBFe7793399D3DdaCC5bBECBB",
     }
-    resp = requests.get("https://raw.githubusercontent.com/iearn-finance/yearn-assets/master/icons/aliases.json").json()
+    resp = requests.get(
+        "https://raw.githubusercontent.com/iearn-finance/yearn-assets/master/icons/aliases.json"
+    ).json()
     aliases = {item["address"]: item for item in resp}
     tokens = []
 
     # Token derived by products
     for product in yearn.registries:
-        vaults = [item.vault for item in yearn.registries[product].vaults if str(item.vault) not in excluded]
+        vaults = [
+            item.vault
+            for item in yearn.registries[product].vaults
+            if str(item.vault) not in excluded
+        ]
         metadata = multicall_matrix(vaults, ["name", "symbol", "decimals"])
         for vault in vaults:
             tokens.append(
@@ -44,9 +50,7 @@ def main():
             )
 
     # Token from special / side projects
-    special = [
-        contract("0xD0660cD418a64a1d44E9214ad8e459324D8157f1") # WOOFY
-    ]
+    special = [contract("0xD0660cD418a64a1d44E9214ad8e459324D8157f1")]  # WOOFY
     metadata = multicall_matrix(special, ["name", "symbol", "decimals"])
     for token in special:
         tokens.append(
@@ -61,11 +65,15 @@ def main():
             )
         )
 
-    deploy_blocks = {token.address: contract_creation_block(token.address) for token in tokens}
+    deploy_blocks = {
+        token.address: contract_creation_block(token.address) for token in tokens
+    }
     tokens = unique(tokens, key=lambda token: token.address)
     tokens = sorted(tokens, key=lambda token: deploy_blocks[token.address])
     version = Version(major=1, minor=len(tokens), patch=0)
-    timestamp = datetime.fromtimestamp(get_block_timestamp(max(deploy_blocks.values())), timezone.utc).isoformat()
+    timestamp = datetime.fromtimestamp(
+        get_block_timestamp(max(deploy_blocks.values())), timezone.utc
+    ).isoformat()
     logo = "https://raw.githubusercontent.com/yearn/yearn-assets/master/icons/tokens/0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e/logo.svg"
 
     print(f"{version=}\n{timestamp=}")

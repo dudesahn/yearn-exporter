@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 BATCH_SIZE = {
     Network.Mainnet: 10_000,  # 1.58 days
     Network.Fantom: 10_000,  # 1.03 days
-    Network.Arbitrum: 20_000, # 0.34 days
+    Network.Arbitrum: 20_000,  # 0.34 days
 }
 CACHED_CALLS = [
     "name()",
@@ -34,7 +34,10 @@ def should_cache(method, params):
     if method == "eth_getCode" and params[1] == "latest":
         return True
     if method == "eth_getLogs":
-        return int(params[0]["toBlock"], 16) - int(params[0]["fromBlock"], 16) == BATCH_SIZE[chain.id] - 1
+        return (
+            int(params[0]["toBlock"], 16) - int(params[0]["fromBlock"], 16)
+            == BATCH_SIZE[chain.id] - 1
+        )
     return False
 
 
@@ -55,7 +58,9 @@ def cache_middleware(make_request, w3):
 def setup_middleware():
     # patch web3 provider with more connections and higher timeout
     if w3.provider:
-        assert w3.provider.endpoint_uri.startswith("http"), "only http and https providers are supported"
+        assert w3.provider.endpoint_uri.startswith(
+            "http"
+        ), "only http and https providers are supported"
         adapter = HTTPAdapter(pool_connections=100, pool_maxsize=100)
         session = Session()
         session.mount("http://", adapter)
